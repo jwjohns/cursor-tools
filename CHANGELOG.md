@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.1] - 2024-03-19
+
+### Changed
+- Changed default tokenizer to `o200k_base` for better compatibility with Gemini models
+- Added configurable tokenizer support through `tokenCount.encoding` in config file
+- Updated documentation to reflect new tokenizer configuration options
+
 ## [0.4.0] - 2024-03-19
 
 ### Improvements

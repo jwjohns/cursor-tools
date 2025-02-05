@@ -8,11 +8,8 @@ cursor-tools is an npm package that you can install in your project and provides
 
 ## Examples
 
-Early examples from when the tools were called ask_perplexity and ask_gemini (new example screenshots and videos coming soon)
+TLDR: Check out [this example issue that was solved using Cursor agent and cursor-tools](https://github.com/eastlondoner/cursor-tools/issues/1)
 
-| web example | repo example |
-|-------------------|--------------------------|
-| <img src="https://github.com/user-attachments/assets/6af1af2e-ab8d-4b02-915c-3ff5ded14507" width="400"/><br/><img src="https://github.com/user-attachments/assets/f9051238-d14d-4db3-8847-b4acc90edd0a" width="400"/> | <img src="https://github.com/user-attachments/assets/3cb1a805-bef9-4957-9950-cd37d2bef8d3" width="400"/> |
 
 ## Requirements
 
@@ -152,9 +149,19 @@ Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
   "gemini": {
     "model": "gemini-2.0-flash-thinking-exp-01-21",
     "maxTokens": 10000
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"  // Tokenizer to use for token counting (options: o200k_base, cl100k_base, gpt2, r50k_base, p50k_base, p50k_edit)
   }
 }
 ```
+
+The configuration supports:
+- `perplexity.model`: Perplexity AI model to use
+- `perplexity.maxTokens`: Maximum tokens for Perplexity responses
+- `gemini.model`: Google Gemini model to use
+- `gemini.maxTokens`: Maximum tokens for Gemini responses
+- `tokenCount.encoding`: Tokenizer to use for counting tokens (defaults to `o200k_base` which is optimized for Gemini)
 
 ### GitHub Authentication
 The GitHub commands support several authentication methods:
@@ -260,41 +267,39 @@ npx -y cursor-tools@latest web "query"
 
 ## Troubleshooting
 
-### Common Issues
-
 1. **Command Not Found**
-   - Ensure `cursor-tools` is installed (globally or as a dev dependency)
-   - Check your PATH if installed globally
+    - Ensure `cursor-tools` is installed (globally or as a dev dependency)
+    - Check your PATH if installed globally
 
 2. **API Key Errors**
-   - Verify `.cursor-tools.env` exists and contains valid API keys
-   - Run `cursor-tools install` to reconfigure API keys
-   - Check that your API keys have the necessary permissions
-   - For GitHub operations, ensure your token has the required scopes (repo, read:user)
+    - Verify `.cursor-tools.env` exists and contains valid API keys
+    - Run `cursor-tools install` to reconfigure API keys
+    - Check that your API keys have the necessary permissions
+    - For GitHub operations, ensure your token has the required scopes (repo, read:user)
 
 3. **Model Errors**
-   - Check your internet connection
-   - Verify API key permissions
-   - Ensure the specified model is available for your API tier
+    - Check your internet connection
+    - Verify API key permissions
+    - Ensure the specified model is available for your API tier
 
 4. **GitHub API Rate Limits**
-   - GitHub API has rate limits for unauthenticated requests. For higher limits you must be authenticated.
-   - If you have the gh cli installed and logged in cursor-tools will use that to obtain a short lived auth token. Otherwise you can add a GitHub token to your environment:
-     ```env
-     GITHUB_TOKEN=your_token_here
-     ```
-   - Private repositories always require authentication
+    - GitHub API has rate limits for unauthenticated requests. For higher limits you must be authenticated.
+    - If you have the gh cli installed and logged in cursor-tools will use that to obtain a short lived auth token. Otherwise you can add a GitHub token to your environment:
+      ```env
+      GITHUB_TOKEN=your_token_here
+      ```
+    - Private repositories always require authentication
 
 5. **Documentation Generation Issues**
-   - Repository too large: Try using `--hint` to focus on specific parts
-   - Token limit exceeded: The tool will automatically switch to a larger model
-   - Network timeouts: The tool includes automatic retries
-   - For very large repositories, consider documenting specific directories or files
+    - Repository too large: Try using `--hint` to focus on specific parts
+    - Token limit exceeded: The tool will automatically switch to a larger model
+    - Network timeouts: The tool includes automatic retries
+    - For very large repositories, consider documenting specific directories or files
 
 6. **Cursor Integration**
-   - If .cursorrules is outdated, run `cursor-tools install .` to update
-   - Ensure Cursor is configured to allow command execution
-   - Check that your Cursor version supports AI commands
+    - If .cursorrules is outdated, run `cursor-tools install .` to update
+    - Ensure Cursor is configured to allow command execution
+    - Check that your Cursor version supports AI commands
 
 ### Examples
 
@@ -349,9 +354,29 @@ cursor-tools github pr 123 --from-github microsoft/typescript
 cursor-tools github issue 456 --from-github golang/go
 ```
 
+## Node Package Manager (npm)
+
+cursor-tools is available on npm [here](https://www.npmjs.com/package/cursor-tools)
+
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions are welcome! Please feel free to submit a Pull Request. If you used cursor-tools to make your contribution please include screenshots or videos of cursor-tools in action.
+
+
+## Sponsors
+
+### [Vinta.app](https://vinta.app)
+**Optimise your Vinted accounting** with real-time analytics, inventory management, and tax compliance tools.
+
+:link: [Start scaling your Vinted business today](https://vinta.app)
+
+---
+
+### [Resoled.it](https://resoled.it)
+**Automate your Vinted reselling business** with advanced tools like autobuy, custom snipers, and one-click relisting.
+
+:link: [Take Vinted reselling to the next level](https://resoled.it)
+
 
 ## License
 
