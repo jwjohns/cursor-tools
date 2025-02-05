@@ -98,6 +98,9 @@ export class DocCommand implements Command {
               includePatterns: includePatterns.join(','),
               ignorePatterns: ignorePatterns.join(','),
             },
+            tokenCount: {
+              encoding: this.config.tokenCount?.encoding || 'o200k_base',
+            },
             signal: {},
           }),
           method: 'POST',
@@ -293,7 +296,7 @@ Focus on:
             enableSecurityCheck: true,
           },
           tokenCount: {
-            encoding: 'cl100k_base',
+            encoding: this.config.tokenCount?.encoding || 'o200k_base',
           },
           cwd: process.cwd(),
         });

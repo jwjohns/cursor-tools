@@ -12,6 +12,9 @@ export interface Config {
   doc?: {
     maxRepoSizeMB?: number; // Maximum repository size in MB for remote processing
   };
+  tokenCount?: {
+    encoding: 'o200k_base' | 'gpt2' | 'r50k_base' | 'p50k_base' | 'p50k_edit' | 'cl100k_base'; // The tokenizer encoding to use
+  };
 }
 
 export const defaultConfig: Config = {
@@ -25,6 +28,9 @@ export const defaultConfig: Config = {
   },
   doc: {
     maxRepoSizeMB: 100, // Default to 100MB
+  },
+  tokenCount: {
+    encoding: 'o200k_base', // Default to o200k_base as it's optimized for Gemini
   },
 };
 

@@ -81,7 +81,7 @@ export class RepoCommand implements Command {
           enableSecurityCheck: true,
         },
         tokenCount: {
-          encoding: 'cl100k_base',
+          encoding: this.config.tokenCount?.encoding || 'o200k_base',
         },
         cwd: process.cwd(),
       });
