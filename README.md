@@ -1,6 +1,42 @@
-# cursor-tools
+<div align="center">
+  <img height="72" src="https://github.com/user-attachments/assets/45eff178-242f-4d84-863e-247b080cc6f5" />
+</div>
 
-Enhance your Dev Agent / AI powered IDE with *even more AI*
+<div align=center><h1>cursor-tools</h1></div>
+
+Cursor Agent teamed up with Gemini and Perplexity in your IDE
+
+Let Cursor Agent:
+- Use Perplexity to search the web and perform deep research
+- Chat with Gemini 2.0 for huge whole-codebase context window, search grounding and reasoning
+- Work with GitHub Issues and Pull Requests
+- Do basic browser-based debugging including checking console logs and debugging network requests
+
+<div align="center">
+  <div style="display: flex;">
+    <img width="250" src="https://github.com/user-attachments/assets/119e6c5c-3776-46d9-8f73-9a3f2d8ac939" />
+    <img width="250" src="https://github.com/user-attachments/assets/f777937d-896f-4701-8f50-edf583d841f1" />
+  </div>
+</div>
+
+
+
+When you install cursor-tools we add the tools AND the instructions to your Cursor Compose agent so that it can:
+
+
+
+What's be
+Enhance your Dev Agent with *even more AI*
+
+Which is the best coding AI? Is it Gemini 2.0 or o3, or Claude? What about Perplexity?
+
+I actually don't know but I do know, when they work together they are much better than when they work alone.
+
+
+## How do I use it
+
+
+
 
 AI-compatible AI-powered web queries and codebase understanding. `cursor-tools` seamlessly integrates with Cursor (and other agents) to provide intelligent responses using Perplexity AI for web searches and Google Gemini for whole-repository-aware assistance.
 
