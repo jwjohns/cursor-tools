@@ -20,29 +20,14 @@ Let Cursor Agent:
 </div>
 
 
+`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` works with with Cursor (and is compatible with other agents), When you run `cursor-tools install` we automatically add a prompt section to your `.cursorrules` file so that it works out of the box with Cursor, there's not need for additional prompts.
 
-When you install cursor-tools we add the tools AND the instructions to your Cursor Compose agent so that it can:
+`cursor-tools` requires a Perplexity API key and a Google AI API key.
 
-
-
-What's be
-Enhance your Dev Agent with *even more AI*
-
-Which is the best coding AI? Is it Gemini 2.0 or o3, or Claude? What about Perplexity?
-
-I actually don't know but I do know, when they work together they are much better than when they work alone.
+`cursor-tools` is an npm package that you can install in your project, install globally or run without installation using `npx`.
 
 
-## How do I use it
-
-
-
-
-AI-compatible AI-powered web queries and codebase understanding. `cursor-tools` seamlessly integrates with Cursor (and other agents) to provide intelligent responses using Perplexity AI for web searches and Google Gemini for whole-repository-aware assistance.
-
-cursor-tools is an npm package that you can install in your project and provides a CLI that your AI agent can use to expand its capabilities.
-
-## Examples
+## Additional Examples
 
 TLDR: Check out [this example issue that was solved using Cursor agent and cursor-tools](https://github.com/eastlondoner/cursor-tools/issues/1)
 
