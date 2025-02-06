@@ -14,8 +14,8 @@ Let Cursor Agent:
 
 <div align="center">
   <div style="display: flex;">
-    <img width="250" src="https://github.com/user-attachments/assets/119e6c5c-3776-46d9-8f73-9a3f2d8ac939" />
-    <img width="250" src="https://github.com/user-attachments/assets/f777937d-896f-4701-8f50-edf583d841f1" />
+    <img width="350" src="https://github.com/user-attachments/assets/119e6c5c-3776-46d9-8f73-9a3f2d8ac939" />
+    <img width="350" src="https://github.com/user-attachments/assets/f777937d-896f-4701-8f50-edf583d841f1" />
   </div>
 </div>
 
