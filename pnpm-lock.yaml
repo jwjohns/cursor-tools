@@ -20,6 +20,9 @@ importers:
       playwright:
         specifier: 1.50.1
         version: 1.50.1
+      punycode:
+        specifier: ^2.3.1
+        version: 2.3.1
       repomix:
         specifier: 0.2.24
         version: 0.2.24

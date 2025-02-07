@@ -11,7 +11,7 @@
   "browser": {
     "headless": true,
     "defaultViewport": "1280x720",
-    "timeout": 60000
+    "timeout": 120000
   },
   "stagehand": {
     "provider": "openai",

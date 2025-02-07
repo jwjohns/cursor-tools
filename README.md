@@ -181,31 +181,69 @@ yarn add playwright
 pnpm add playwright
 ```
 
+#### Video Recording
+All browser commands support video recording of the browser interaction. This is useful for debugging and documentation:
+- Use `--video=<directory>` to enable recording
+- Videos are saved at 1280x720 resolution
+- Each recording gets a unique timestamp
+- Recording starts when the browser opens and ends when it closes
+- Videos are saved as .webm files
+
+Example:
+```bash
+# Record a video of filling out a form
+cursor-tools browser act "Fill out registration form with name John Doe" --url "http://localhost:3000/signup" --video="./recordings"
+```
+
+#### Complex Actions
+The `act` command supports chaining multiple actions using the pipe (|) separator. This allows you to perform complex sequences of actions in a single command:
+
+```bash
+# Login sequence
+cursor-tools browser act "Click Login | Type 'user@example.com' into email | Type 'password123' into password | Click Submit" --url "http://localhost:3000/signup"
+
+# Form filling
+cursor-tools browser act "Select 'Mr' from title | Type 'John' into first name | Type 'Doe' into last name | Click Next" --url "http://localhost:3000/register"
+```
+
+Each instruction is executed in sequence, and the command will fail if any step fails. You can combine this with video recording and console and network logging to debug complex interactions:
+
+```bash
+# Record a complex interaction
+cursor-tools browser act "Click Login | Type credentials | Click Submit | Wait for dashboard" --url "https://example.com" --video="./debug-recordings" --console --network
+```
+
 Examples:
 ```bash
 # Basic usage: Open a URL and capture its HTML content
-cursor-tools browser open "https://example.com" --html
+cursor-tools browser open "http://localhost:3000" --html
 
 # Add console logs and network monitoring
-cursor-tools browser open "https://example.com" --console --network
+cursor-tools browser open "http://localhost:3000" --console --network
 
 # Capture a screenshot of the entire page
-cursor-tools browser open "https://example.com" --screenshot="page.png"
+cursor-tools browser open "http://localhost:3000" --screenshot="page.png"
 
 # Debug with visible browser window (non-headless mode)
-cursor-tools browser open "https://example.com" --no-headless
+cursor-tools browser open "http://localhost:3000" --no-headless
 
 # Advanced: Connect to an existing Chrome instance
-cursor-tools browser open "https://example.com" --connect-to=9222
+cursor-tools browser open "http://localhost:3000" --connect-to=9222
 
 # AI-powered action: Click on a button using natural language instruction
-cursor-tools browser act "Click on 'Get Started' button" --url "https://example.com"
+cursor-tools browser act "Click on 'Get Started' button" --url "http://localhost:3000"
+
+# AI-powered action: Multiple sequential actions using pipe separator and console and network logging
+cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login" --console --network
+
+# Record video of browser interaction
+cursor-tools browser act "Fill out all fields on the registration form with dummy data" --url "http://localhost:3000/signup" --video="./recordings"
 
 # AI-powered data extraction: Extract product names and prices
-cursor-tools browser extract "Extract product names and prices" --url "https://example.com/products"
+cursor-tools browser extract "Extract product names and prices" --url "http://localhost:3000/products"
 
 # AI-powered observation: List interactive elements on a page
-cursor-tools browser observe "List all interactive elements" --url "https://example.com"
+cursor-tools browser observe "List all interactive elements" --url "http://localhost:3000/signup"
 ```
 
 Browser command options:
@@ -219,6 +257,7 @@ Browser command options:
 - `--headless`: Run browser in headless mode (default: true)
 - `--no-headless`: Show browser UI for visual inspection and debugging
 - `--connect-to=<port>`: Connect to an existing Chrome instance
+- `--evaluate=<javascript>`: Execute JavaScript code in the browser before the main command
 
 #### `act`, `extract`, `observe` subcommands (AI-powered):
 - `--url <url>`: The webpage URL to interact with (required)

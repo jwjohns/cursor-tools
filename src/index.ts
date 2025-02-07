@@ -29,7 +29,8 @@ type StringOption =
   | 'viewport'
   | 'selector'
   | 'wait'
-  | 'video';
+  | 'video'
+  | 'evaluate';
 type NumberOption = 'maxTokens' | 'timeout' | 'connectTo';
 type BooleanOption = 'console' | 'html' | 'network' | 'headless' | 'text' | 'debug';
 
@@ -63,6 +64,7 @@ const OPTION_KEYS: Record<string, OptionKey> = {
   wait: 'wait',
   debug: 'debug',
   video: 'video',
+  evaluate: 'evaluate',
 };
 
 // Set of option keys that are boolean flags (don't require a value)
@@ -108,6 +110,7 @@ async function main() {
     selector: undefined,
     wait: undefined,
     video: undefined,
+    evaluate: undefined,
     // Number options
     maxTokens: undefined,
     timeout: undefined,
@@ -297,7 +300,9 @@ async function main() {
   }
 }
 
-main().catch((error) => {
-  console.error('Fatal error:', error);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });

@@ -32,8 +32,6 @@ export interface SharedBrowserCommandOptions extends CommandOptions {
  * Options specific to the browser open command
  */
 export interface OpenCommandOptions extends SharedBrowserCommandOptions {
-
-
   /** Wait condition after page load (time duration or CSS selector) */
   wait?: string;
 }

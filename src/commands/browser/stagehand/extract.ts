@@ -1,26 +1,32 @@
 import type { Command, CommandGenerator } from '../../../types';
 import {
-  initializeBrowser,
   formatOutput,
   handleBrowserError,
   ExtractionSchemaError,
   NavigationError,
 } from './stagehandUtils';
-import type { Page } from 'playwright';
+import { ConstructorParams, Stagehand } from '@browserbasehq/stagehand';
+import { loadConfig } from '../../../config';
+import {
+  loadStagehandConfig,
+  validateStagehandConfig,
+  getStagehandApiKey,
+  getStagehandModel,
+} from './config';
 import type { SharedBrowserCommandOptions } from '../browserOptions';
 import {
   setupConsoleLogging,
   setupNetworkMonitoring,
   captureScreenshot,
   outputMessages,
-  withVideoRecording,
-  BROWSER_LAUNCHED_MESSAGE,
+  setupVideoRecording,
 } from '../utilsShared';
+import { stagehandLogger } from './act';
 
 export class ExtractCommand implements Command {
   async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
     if (!query) {
-      yield 'Please provide an extraction instruction and URL. Usage: browser extract "<instruction>" --url <url> [--schema <path>]';
+      yield 'Please provide an extraction instruction and URL. Usage: browser extract "<instruction>" --url <url>';
       return;
     }
 
@@ -30,20 +36,73 @@ export class ExtractCommand implements Command {
       return;
     }
 
+    // Load and validate configuration
+    const config = loadConfig();
+    const stagehandConfig = loadStagehandConfig(config);
+    validateStagehandConfig(stagehandConfig);
+
+    let stagehand: Stagehand | undefined;
     let consoleMessages: string[] = [];
     let networkMessages: string[] = [];
-    const { browser, page } = await initializeBrowser({
-      headless: true,
-      timeout: 30000,
-    });
 
     try {
+      const config = {
+        env: 'LOCAL',
+        headless: options?.headless ?? stagehandConfig.headless,
+        verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
+        debugDom: options?.debug ?? stagehandConfig.debugDom,
+        modelName: getStagehandModel(stagehandConfig),
+        apiKey: getStagehandApiKey(stagehandConfig),
+        enableCaching: stagehandConfig.enableCaching,
+        logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
+      } satisfies ConstructorParams;
+
+      console.log('using stagehand config', config);
+      stagehand = new Stagehand(config);
+
+      await using _stagehand = {
+        [Symbol.asyncDispose]: async () => {
+          console.error('closing stagehand, this can take a while');
+          await Promise.race([
+            stagehand?.page.close(),
+            stagehand?.close(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Page close timeout')), 5000)
+            ),
+          ]);
+          console.error('stagehand closed');
+        },
+      };
+
+      // Initialize with timeout
+      const initPromise = stagehand.init({
+        ...options,
+        //@ts-ignore
+        recordVideo: options.video
+          ? {
+              dir: await setupVideoRecording(options),
+            }
+          : undefined,
+      });
+      const initTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Initialization timeout')), 30000)
+      );
+      await Promise.race([initPromise, initTimeoutPromise]);
+
       // Setup console and network monitoring
-      consoleMessages = await setupConsoleLogging(page, options);
-      networkMessages = await setupNetworkMonitoring(page, options);
+      consoleMessages = await setupConsoleLogging(stagehand.page, options);
+      networkMessages = await setupNetworkMonitoring(stagehand.page, options);
 
       try {
-        await page.goto(url);
+        // Navigate with timeout
+        const gotoPromise = stagehand.page.goto(url);
+        const gotoTimeoutPromise = new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Navigation timeout')),
+            stagehandConfig.timeout ?? 30000
+          )
+        );
+        await Promise.race([gotoPromise, gotoTimeoutPromise]);
       } catch (error) {
         throw new NavigationError(
           `Failed to navigate to ${url}. Please check if the URL is correct and accessible.`,
@@ -51,13 +110,14 @@ export class ExtractCommand implements Command {
         );
       }
 
-      yield BROWSER_LAUNCHED_MESSAGE
-      // TODO: Replace with actual Stagehand extract implementation once available
-      // For now, we'll simulate extraction using Playwright
-      const result = await this.simulateExtraction(page, query);
+      const result = await this.performExtraction(
+        stagehand,
+        { instruction: query, evaluate: options?.evaluate },
+        options?.timeout ?? stagehandConfig.timeout
+      );
 
       // Take screenshot if requested
-      await captureScreenshot(page, options);
+      await captureScreenshot(stagehand.page, options);
 
       // Output result and messages
       yield formatOutput(result, options?.debug);
@@ -65,125 +125,62 @@ export class ExtractCommand implements Command {
         yield message;
       }
 
+      // Output HTML content if requested
+      if (options?.html) {
+        const htmlContent = await stagehand.page.content();
+        yield '\n--- Page HTML Content ---\n\n';
+        yield htmlContent;
+        yield '\n--- End of HTML Content ---\n';
+      }
+
       if (options?.screenshot) {
         yield `Screenshot saved to ${options.screenshot}\n`;
       }
     } catch (error) {
       yield handleBrowserError(error, options?.debug);
-    } finally {
-      await browser.close();
     }
   }
 
-  private async simulateExtraction(page: Page, instruction: string): Promise<unknown> {
-    // This is a temporary implementation until Stagehand is available
-    const normalizedInstruction = instruction.toLowerCase();
-
-    // Basic extraction based on common instructions
-    if (normalizedInstruction.includes('title')) {
-      const title = await page.title();
-      return title;
-    }
-
-    if (normalizedInstruction.includes('text')) {
-      try {
-        const text = await page.$eval('body', (el) => el.innerText);
-        return text;
-      } catch (error) {
-        throw new ExtractionSchemaError('Failed to extract text content from the page', {
-          instruction,
-          error,
-          pageContent: await page.content(),
-        });
-      }
-    }
-
-    if (normalizedInstruction.includes('links')) {
-      try {
-        const links = await page.$$eval('a', (elements) =>
-          elements.map((a) => ({
-            text: a.innerText,
-            href: a.href,
-          }))
-        );
-        return links;
-      } catch (error) {
-        throw new ExtractionSchemaError('Failed to extract links from the page', {
-          instruction,
-          error,
-          availableElements: await page.$$eval('a', (elements) =>
-            elements.map((el) => ({
-              text: el.textContent?.trim(),
-              href: el.getAttribute('href'),
-            }))
-          ),
-        });
-      }
-    }
-
-    if (normalizedInstruction.includes('images')) {
-      try {
-        const images = await page.$$eval('img', (elements) =>
-          elements.map((img) => ({
-            alt: img.alt,
-            src: img.src,
-          }))
-        );
-        return images;
-      } catch (error) {
-        throw new ExtractionSchemaError('Failed to extract images from the page', {
-          instruction,
-          error,
-          availableElements: await page.$$eval('img', (elements) =>
-            elements.map((el) => ({
-              alt: el.getAttribute('alt'),
-              src: el.getAttribute('src'),
-            }))
-          ),
-        });
-      }
-    }
-
-    // Default to extracting visible text content
+  private async performExtraction(
+    stagehand: Stagehand,
+    {
+      instruction,
+      evaluate,
+    }: {
+      instruction: string;
+      evaluate?: string;
+    },
+    timeout = 120000
+  ): Promise<unknown> {
     try {
-      const content = await page.$eval('body', (body) => {
-        const getVisibleText = (element: Element): string => {
-          // Simple visibility check using offsetParent
-          if (
-            element instanceof HTMLElement &&
-            !element.offsetParent &&
-            element.tagName !== 'BODY'
-          ) {
-            return '';
-          }
+      let totalTimeout: NodeJS.Timeout | undefined;
+      const totalTimeoutPromise = new Promise(
+        (_, reject) =>
+          (totalTimeout = setTimeout(() => reject(new Error('Extraction timeout')), timeout))
+      );
 
-          let text = '';
-          const childNodes = Array.from(element.childNodes);
-          for (const child of childNodes) {
-            if (child.nodeType === 3) {
-              // Node.TEXT_NODE
-              text += (child.textContent || '') + ' ';
-            } else if (child.nodeType === 1) {
-              // Node.ELEMENT_NODE
-              text += getVisibleText(child as Element);
-            }
-          }
-          return text;
-        };
+      if (evaluate) {
+        await Promise.race([stagehand.page.evaluate(evaluate), totalTimeoutPromise]);
+      }
 
-        return getVisibleText(body).trim();
-      });
+      // Perform extraction with timeout
+      const extractionPromise = stagehand.page.extract(instruction);
+      const result = await Promise.race([extractionPromise, totalTimeoutPromise]);
 
-      return content;
+      if (totalTimeout) {
+        clearTimeout(totalTimeout);
+      }
+
+      return result;
     } catch (error) {
-      throw new ExtractionSchemaError('Failed to extract visible text content from the page', {
-        instruction,
-        error,
-        pageContent: await page.content(),
-      });
+      if (error instanceof Error) {
+        throw new ExtractionSchemaError(`${error.message} Failed to extract data: ${instruction}`, {
+          instruction,
+          error,
+          pageContent: await stagehand.page.content(),
+        });
+      }
+      throw error;
     }
   }
 }
-
-// Wrap the execute method with video recording functionality
-ExtractCommand.prototype.execute = withVideoRecording(ExtractCommand.prototype.execute);

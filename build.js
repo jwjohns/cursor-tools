@@ -55,6 +55,7 @@ const require = createRequire(import.meta.url);
     'os',
     'crypto',
     'process',
+    'punycode',
     // External dependencies
     'dotenv',
     'repomix',

@@ -24,16 +24,15 @@ export class BrowserCommand implements Command {
     }
 
     const subCommandHandler = this.subcommands[subcommand];
-    try{
+    try {
       if (subCommandHandler) {
         yield* subCommandHandler.execute(subQuery, options);
       } else {
         yield `Unknown browser subcommand: ${subcommand}. Available subcommands: open, element, act, extract, observe`;
       }
     } catch (error) {
-      console.error("Error executing browser command", error)
+      console.error('Error executing browser command', error);
       throw error;
     }
   }
 }
-

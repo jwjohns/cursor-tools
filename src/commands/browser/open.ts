@@ -11,7 +11,6 @@ import {
   setupVideoRecording,
   stopVideoRecording,
 } from './utilsShared';
-import { join } from 'path';
 
 // Helper function to parse time duration string to milliseconds
 function parseTimeDuration(duration: string): number | null {
@@ -109,20 +108,26 @@ export class OpenCommand implements Command {
         } else {
           yield 'Launching browser...';
           browser = await browserType.launch({
-            headless: options.headless !== undefined ? options.headless : (this.config.browser?.headless ?? true),
+            headless:
+              options.headless !== undefined
+                ? options.headless
+                : (this.config.browser?.headless ?? true),
           });
         }
 
         videoPath = await setupVideoRecording(options);
         console.log('videoPath', videoPath);
         const context = await browser.newContext({
-          recordVideo: options.video ? {
-            dir: videoPath!,
-            size: { width: 1280, height: 720 }
-          } : undefined,
+          recordVideo: options.video
+            ? {
+                dir: videoPath!,
+                size: { width: 1280, height: 720 },
+              }
+            : undefined,
           serviceWorkers: 'allow',
           extraHTTPHeaders: {
-            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            Accept:
+              'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
           },
         });
 

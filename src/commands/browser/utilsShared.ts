@@ -4,7 +4,6 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CommandGenerator } from '../../types';
 
-export const BROWSER_LAUNCHED_MESSAGE = 'Browser launched';
 /**
  * Formats a console message with location and stack trace information.
  *
@@ -221,8 +220,8 @@ export async function setupVideoRecording(
   }
 
   try {
-    const videoDir = join(options.video, new Date().toISOString().replace(/[:.]/g, '-'))
-    
+    const videoDir = join(options.video, new Date().toISOString().replace(/[:.]/g, '-'));
+
     // Ensure the video directory exists
     if (!existsSync(videoDir)) {
       mkdirSync(videoDir, { recursive: true });
@@ -252,7 +251,7 @@ export async function stopVideoRecording(
     if (!video) {
       return undefined;
     }
-    
+
     const path = await video.path();
     return `Video saved to ${path}\n`;
   } catch (error) {
@@ -261,55 +260,4 @@ export async function stopVideoRecording(
   }
 }
 
-type ExecuteFunction = (
-  query: string,
-  options?: SharedBrowserCommandOptions
-) => CommandGenerator;
-
-/**
- * Wraps a command's execute function with video recording functionality
- */
-export function withVideoRecording(execute: ExecuteFunction): ExecuteFunction {
-  return async function* (
-    this: any,  // Preserve the this context
-    query: string,
-    options?: SharedBrowserCommandOptions
-  ): CommandGenerator {
-    let videoPath: string | null = null;
-    let browser: any;
-
-    const videoDir = options?.video;
-    if (!videoDir) {
-      yield* execute.call(this, query, options);
-    } else {
-
-      const close = async (): Promise<string> => {
-          if (videoPath && this.page) {
-            console.log("stopping video recording", {videoPath})
-            const videoMessage = await stopVideoRecording(this.page, videoPath);
-            if (videoMessage) {
-              return videoMessage;
-            } else {
-              return "No video found, this is probably a bug in cursor-tools, please report it to eastlondonDev on twitter or on github to https://github.com/eastlondondev/cursor-tools/issues"
-            }
-          } else {
-            return "No page or video path found to record, this is probably a bug in cursor-tools, please report it to eastlondonDev on twitter or on github to https://github.com/eastlondondev/cursor-tools/issues"
-          }
-      };
-
-      try {
-        // Call the original execute function with the correct this context
-        for await (const message of execute.call(this, query, options)) {
-          console.log("video message", { message, options })
-          yield message;
-        }
-        yield await close()
-      }
-      catch (error) {
-        const closeMessage = await close();
-        console.error(closeMessage);
-        throw error;
-      }
-    };
-  }
-}
+type ExecuteFunction = (query: string, options?: SharedBrowserCommandOptions) => CommandGenerator;

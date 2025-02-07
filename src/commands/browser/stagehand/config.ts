@@ -35,7 +35,7 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
   const verbose = stagehandConfig.verbose ?? false;
   const debugDom = stagehandConfig.debugDom ?? false;
   const enableCaching = stagehandConfig.enableCaching ?? false;
-  const timeout = stagehandConfig.timeout ?? 30000;
+  const timeout = stagehandConfig.timeout ?? 120000;
   let provider: 'anthropic' | 'openai';
 
   // Set provider based on available API keys

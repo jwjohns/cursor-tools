@@ -1,22 +1,37 @@
 import type { Command, CommandGenerator } from '../../../types';
 import {
-  initializeBrowser,
   formatOutput,
   handleBrowserError,
   ObservationError,
   NavigationError,
 } from './stagehandUtils';
-import type { Page } from 'playwright';
-import type { ObservationResult } from '../../../types/browser/browser';
+import { ConstructorParams, Stagehand, ObserveResult } from '@browserbasehq/stagehand';
+import { loadConfig } from '../../../config';
+import {
+  loadStagehandConfig,
+  validateStagehandConfig,
+  getStagehandApiKey,
+  getStagehandModel,
+} from './config';
 import type { SharedBrowserCommandOptions } from '../browserOptions';
 import {
   setupConsoleLogging,
   setupNetworkMonitoring,
   captureScreenshot,
   outputMessages,
-  withVideoRecording,
-  BROWSER_LAUNCHED_MESSAGE,
+  setupVideoRecording,
 } from '../utilsShared';
+import { stagehandLogger } from './act';
+
+interface ObservationResult {
+  elements: Array<{
+    type: string;
+    description: string;
+    actions: string[];
+    location: string;
+  }>;
+  summary: string;
+}
 
 export class ObserveCommand implements Command {
   async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
@@ -25,20 +40,78 @@ export class ObserveCommand implements Command {
       return;
     }
 
+    // Load and validate configuration
+    const config = loadConfig();
+    const stagehandConfig = loadStagehandConfig(config);
+    validateStagehandConfig(stagehandConfig);
+
+    let stagehand: Stagehand | undefined;
     let consoleMessages: string[] = [];
     let networkMessages: string[] = [];
-    const { browser, page } = await initializeBrowser({
-      headless: true,
-      timeout: 30000,
-    });
 
     try {
+      const config = {
+        env: 'LOCAL',
+        headless: options?.headless ?? stagehandConfig.headless,
+        verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
+        debugDom: options?.debug ?? stagehandConfig.debugDom,
+        modelName: getStagehandModel(stagehandConfig),
+        apiKey: getStagehandApiKey(stagehandConfig),
+        enableCaching: stagehandConfig.enableCaching,
+        logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
+      } satisfies ConstructorParams;
+
+      console.log('using stagehand config', config);
+      stagehand = new Stagehand(config);
+
+      await using _stagehand = {
+        [Symbol.asyncDispose]: async () => {
+          console.error('closing stagehand, this can take a while');
+          await Promise.race([
+            stagehand?.page.close(),
+            stagehand?.close(),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Page close timeout')), 5000)
+            ),
+          ]);
+          console.log('stagehand closed');
+        },
+      };
+
+      // Initialize with timeout
+      const initPromise = stagehand.init({
+        ...options,
+        //@ts-ignore
+        recordVideo: options.video
+          ? {
+              dir: await setupVideoRecording(options),
+            }
+          : undefined,
+      });
+      const initTimeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Initialization timeout')), 30000)
+      );
+      await Promise.race([initPromise, initTimeoutPromise]);
+
       // Setup console and network monitoring
-      consoleMessages = await setupConsoleLogging(page, options);
-      networkMessages = await setupNetworkMonitoring(page, options);
+      consoleMessages = await setupConsoleLogging(stagehand.page, options);
+      networkMessages = await setupNetworkMonitoring(stagehand.page, options);
 
       try {
-        await page.goto(options.url);
+        // Navigate with timeout
+        const gotoPromise = stagehand.page.goto(options.url);
+        const gotoTimeoutPromise = new Promise((_, reject) =>
+          setTimeout(
+            () => reject(new Error('Navigation timeout')),
+            stagehandConfig.timeout ?? 30000
+          )
+        );
+        await Promise.race([gotoPromise, gotoTimeoutPromise]);
+
+        // Execute custom JavaScript if provided
+        if (options?.evaluate) {
+          await stagehand.page.evaluate(options.evaluate);
+        }
       } catch (error) {
         throw new NavigationError(
           `Failed to navigate to ${options.url}. Please check if the URL is correct and accessible.`,
@@ -46,13 +119,15 @@ export class ObserveCommand implements Command {
         );
       }
 
-      yield BROWSER_LAUNCHED_MESSAGE
-      // TODO: Replace with actual Stagehand observe implementation once available
-      // For now, we'll simulate observation using Playwright
-      const result = await this.simulateObservation(page, query);
+      // Use Stagehand's native observe method
+      const result = await this.performObservation(
+        stagehand,
+        query,
+        options?.timeout ?? stagehandConfig.timeout
+      );
 
       // Take screenshot if requested
-      await captureScreenshot(page, options);
+      await captureScreenshot(stagehand.page, options);
 
       // Output result and messages
       yield formatOutput(result, options?.debug);
@@ -60,119 +135,118 @@ export class ObserveCommand implements Command {
         yield message;
       }
 
+      // Output HTML content if requested
+      if (options?.html) {
+        const htmlContent = await stagehand.page.content();
+        yield '\n--- Page HTML Content ---\n\n';
+        yield htmlContent;
+        yield '\n--- End of HTML Content ---\n';
+      }
+
       if (options?.screenshot) {
         yield `Screenshot saved to ${options.screenshot}\n`;
       }
     } catch (error) {
-      console.error(error)
+      console.error(error);
       yield handleBrowserError(error, options?.debug);
-    } finally {
-      await browser.close();
     }
   }
 
-  private async simulateObservation(page: Page, instruction?: string): Promise<ObservationResult> {
-    // This is a temporary implementation until Stagehand is available
+  private async performObservation(
+    stagehand: Stagehand,
+    instruction?: string,
+    timeout = 30000
+  ): Promise<ObservationResult> {
     try {
-      const elements = await page.$$eval('*', (elements) => {
-        const isInteractive = (element: Element): boolean => {
-          if (!(element instanceof HTMLElement)) return false;
+      const timeoutPromise = new Promise<ObserveResult[]>((_, reject) =>
+        setTimeout(() => reject(new Error('Observation timeout')), timeout)
+      );
 
-          const tagName = element.tagName.toLowerCase();
+      const observeOptions = {
+        instruction: instruction || 'Find interactive elements on this page',
+        onlyVisible: true,
+        timeout: Math.min(timeout, 5000), // Use a shorter timeout for DOM settling
+      };
 
-          // Check for common interactive elements
-          return (
-            tagName === 'a' ||
-            tagName === 'button' ||
-            tagName === 'input' ||
-            tagName === 'select' ||
-            tagName === 'textarea' ||
-            element.getAttribute('role') === 'button' ||
-            element.getAttribute('role') === 'link' ||
-            element.getAttribute('onclick') !== null ||
-            element.getAttribute('tabindex') !== null
-          );
-        };
+      const observations = await Promise.race([
+        stagehand.page.observe(observeOptions),
+        timeoutPromise,
+      ]);
 
-        const getElementDescription = (
-          element: Element
-        ): { type: string; description: string; actions: string[]; location: string } | null => {
-          if (!isInteractive(element)) return null;
-
-          const tagName = element.tagName.toLowerCase();
-          const type = element.getAttribute('type')?.toLowerCase();
-          const text = element.textContent?.trim() || '';
-          const ariaLabel = element.getAttribute('aria-label');
-          const placeholder = (element as HTMLInputElement).placeholder;
-          const description = ariaLabel || text || placeholder || `${tagName} element`;
-
-          const actions: string[] = [];
-          if (tagName === 'a') actions.push('click', 'hover');
-          if (tagName === 'button') actions.push('click');
-          if (tagName === 'input') {
-            if (type === 'text' || type === 'email' || type === 'password') {
-              actions.push('type', 'focus', 'blur');
-            } else if (type === 'checkbox' || type === 'radio') {
-              actions.push('click', 'check');
-            } else {
-              actions.push('click');
-            }
-          }
-          if (tagName === 'select') actions.push('select');
-          if (tagName === 'textarea') actions.push('type', 'focus', 'blur');
-
-          // Get a simple path to the element
-          let location = '';
-          let current: Element | null = element;
-          while (current && current.tagName !== 'BODY') {
-            const tag = current.tagName.toLowerCase();
-            const id = current.id ? `#${current.id}` : '';
-            const classes = Array.from(current.classList)
-              .map((c) => `.${c}`)
-              .join('');
-            location = `${tag}${id}${classes} > ${location}`;
-            current = current.parentElement;
-          }
-          location = location.replace(/ > $/, '');
-
-          return {
-            type: tagName,
-            description,
-            actions,
-            location,
-          };
-        };
-
-        return elements
-          .map(getElementDescription)
-          .filter((desc): desc is NonNullable<typeof desc> => desc !== null);
-      });
-
-      if (elements.length === 0) {
+      if (!observations || observations.length === 0) {
         throw new ObservationError('No interactive elements found on the page', {
           instruction,
-          pageContent: await page.content(),
+          pageContent: await stagehand.page.content(),
         });
       }
 
-      const summary = `Found ${elements.length} interactive elements on the page`;
+      // Deduplicate elements by selector
+      const uniqueObservations = observations.reduce((acc, obs) => {
+        if (!acc.has(obs.selector)) {
+          acc.set(obs.selector, obs);
+        }
+        return acc;
+      }, new Map<string, ObserveResult>());
+
+      // Helper to determine element type and actions
+      const getTypeAndActions = async (obs: ObserveResult) => {
+        const element = await stagehand.page.$(obs.selector);
+        if (!element) return { type: 'unknown', actions: ['click'] };
+
+        const tagName = await element.evaluate((el) => el.tagName.toLowerCase());
+        const type = await element.evaluate((el) => el.getAttribute('type')?.toLowerCase());
+        const role = await element.evaluate((el) => el.getAttribute('role')?.toLowerCase());
+
+        let elementType = tagName;
+        let actions: string[] = ['click'];
+
+        if (tagName === 'input') {
+          if (type === 'text' || type === 'email' || type === 'password') {
+            actions = ['type', 'focus', 'blur'];
+            elementType = `${type || 'text'} input`;
+          } else if (type === 'checkbox' || type === 'radio') {
+            actions = ['click', 'check'];
+            elementType = type;
+          }
+        } else if (tagName === 'select') {
+          actions = ['select'];
+        } else if (tagName === 'textarea') {
+          actions = ['type', 'focus', 'blur'];
+        } else if (tagName === 'a') {
+          actions = ['click', 'hover'];
+          elementType = 'link';
+        } else if (role === 'button' || tagName === 'button') {
+          elementType = 'button';
+        }
+
+        return { type: elementType, actions };
+      };
+
+      const elements = await Promise.all(
+        Array.from(uniqueObservations.values()).map(async (obs) => {
+          const { type, actions } = await getTypeAndActions(obs);
+          return {
+            type,
+            description: obs.description,
+            actions,
+            location: obs.selector,
+          };
+        })
+      );
 
       return {
         elements,
-        summary,
+        summary: `Found ${elements.length} unique interactive elements on the page`,
       };
     } catch (error) {
       if (error instanceof ObservationError) {
         throw error;
       }
-      throw new ObservationError('Failed to observe interactive elements on the page', {
+      throw new ObservationError('Failed to observe elements on the page', {
         instruction,
         error,
-        pageContent: await page.content(),
+        pageContent: await stagehand.page.content(),
       });
     }
   }
 }
-
-// Wrap the execute method with video recording functionality
-ObserveCommand.prototype.execute = withVideoRecording(ObserveCommand.prototype.execute);

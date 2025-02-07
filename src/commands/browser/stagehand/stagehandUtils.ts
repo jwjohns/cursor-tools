@@ -192,7 +192,7 @@ export function handleBrowserError(error: unknown, debug = false): string {
     } else {
       output.push(JSON.stringify(details, null, 2));
     }
-    output.push('--- End Debug Information ---');
+    output.push('--- End Debug Information ---\n');
   }
 
   return output.join('\n');
