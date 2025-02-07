@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.3-alpha.9] - 2024-03-XX
+
+### Fixed
+- Fixed dynamic require issues with Node.js built-in modules by using proper ESM imports
+- Improved handling of Node.js built-in modules in build configuration
+
 ## [Unreleased]
 
 ### Added

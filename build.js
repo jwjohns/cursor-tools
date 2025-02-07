@@ -3,6 +3,20 @@ import { argv } from 'node:process';
 
 const watch = argv.includes('--watch');
 
+const nodeBuiltinsPlugin = {
+  name: 'node-builtins',
+  setup(build) {
+    build.onResolve({ filter: /^(util|punycode|http)$/ }, args => ({
+      path: args.path,
+      namespace: 'node-builtin'
+    }));
+    build.onLoad({ filter: /.*/, namespace: 'node-builtin' }, args => ({
+      contents: `export * from 'node:${args.path}'; export { default } from 'node:${args.path}';`,
+      loader: 'js'
+    }));
+  }
+};
+
 const buildOptions = {
   entryPoints: ['./src/index.ts'],
   bundle: true,
@@ -13,7 +27,10 @@ const buildOptions = {
   target: 'node20',
   outfile: './dist/index.mjs',
   banner: {
-    js: '#!/usr/bin/env node',
+    js: `#!/usr/bin/env node
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+`
   },
   resolveExtensions: ['.ts', '.js'],
   external: [
@@ -24,6 +41,12 @@ const buildOptions = {
     'url',
     'path',
     'fs',
+    'util',
+    'http',
+    'https',
+    'os',
+    'crypto',
+    'process',
     // External dependencies
     'dotenv',
     'repomix',
@@ -31,12 +54,12 @@ const buildOptions = {
     // Playwright and its dependencies (peer dependency)
     'playwright',
     'playwright-core',
-    '@browserbasehq/stagehand',
     'chromium-bidi',
     'chromium-bidi/*'
   ],
   mainFields: ['module', 'main'],
-  define: {}
+  define: {},
+  plugins: [nodeBuiltinsPlugin]
 };
 
 if (watch) {

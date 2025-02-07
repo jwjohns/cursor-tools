@@ -110,7 +110,7 @@ export function checkCursorRules(workspacePath: string): {
     }
 
     // Check version
-    const versionMatch = content.match(/<!-- cursor-tools-version: (\d+) -->/);
+    const versionMatch = content.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
     const currentVersion = versionMatch ? versionMatch[1] : '0';
 
     if (currentVersion !== CURSOR_RULES_VERSION) {
