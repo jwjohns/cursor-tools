@@ -6,10 +6,18 @@ const watch = argv.includes('--watch');
 const nodeBuiltinsPlugin = {
   name: 'node-builtins',
   setup(build) {
-    build.onResolve({ filter: /^(util|punycode|http)$/ }, args => ({
+    // Handle punycode redirects
+    build.onResolve({ filter: /^(node:)?punycode$/ }, () => ({
+      path: 'punycode/',
+      external: true
+    }));
+
+    // Handle other node builtins
+    build.onResolve({ filter: /^(util|http)$/ }, args => ({
       path: args.path,
       namespace: 'node-builtin'
     }));
+
     build.onLoad({ filter: /.*/, namespace: 'node-builtin' }, args => ({
       contents: `export * from 'node:${args.path}'; export { default } from 'node:${args.path}';`,
       loader: 'js'

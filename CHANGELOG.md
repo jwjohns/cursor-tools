@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.3-alpha.10] - 2024-03-XX
+
+### Fixed
+- Fixed punycode deprecation warning by properly redirecting both `punycode` and `node:punycode` imports to `punycode/`
+
 ## [0.4.3-alpha.9] - 2024-03-XX
 
 ### Fixed
