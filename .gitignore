@@ -32,3 +32,6 @@ Thumbs.db
 # Other
 repomix-output.txt
 .repomix*
+test-videos/
+screenshot.png
+screenshots/

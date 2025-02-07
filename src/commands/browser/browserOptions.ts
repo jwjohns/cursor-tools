@@ -20,16 +20,20 @@ export interface SharedBrowserCommandOptions extends CommandOptions {
   network?: boolean;
   /** Directory to save video recordings to */
   video?: string;
+  /** JavaScript code to execute in the browser before the main command */
+  evaluate?: string;
+  /** Viewport size in format "widthxheight" (e.g. "1280x720") */
+  viewport?: string;
+  /** Port number to connect to existing Chrome instance */
+  connectTo?: number;
 }
 
 /**
  * Options specific to the browser open command
  */
 export interface OpenCommandOptions extends SharedBrowserCommandOptions {
-  /** Viewport size in format "widthxheight" (e.g. "1280x720") */
-  viewport?: string;
-  /** Port number to connect to existing Chrome instance */
-  connectTo?: number;
+
+
   /** Wait condition after page load (time duration or CSS selector) */
   wait?: string;
 }

@@ -36,3 +36,4 @@ export class BrowserCommand implements Command {
     }
   }
 }
+
