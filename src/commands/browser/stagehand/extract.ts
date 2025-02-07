@@ -13,6 +13,8 @@ import {
   setupNetworkMonitoring,
   captureScreenshot,
   outputMessages,
+  withVideoRecording,
+  BROWSER_LAUNCHED_MESSAGE,
 } from '../utilsShared';
 
 export class ExtractCommand implements Command {
@@ -49,6 +51,7 @@ export class ExtractCommand implements Command {
         );
       }
 
+      yield BROWSER_LAUNCHED_MESSAGE
       // TODO: Replace with actual Stagehand extract implementation once available
       // For now, we'll simulate extraction using Playwright
       const result = await this.simulateExtraction(page, query);
@@ -181,3 +184,6 @@ export class ExtractCommand implements Command {
     }
   }
 }
+
+// Wrap the execute method with video recording functionality
+ExtractCommand.prototype.execute = withVideoRecording(ExtractCommand.prototype.execute);

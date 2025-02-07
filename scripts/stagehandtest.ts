@@ -1,19 +1,19 @@
-import type { Command, CommandGenerator } from '../../../types';
+import type { Command, CommandGenerator } from '../src/types';
 import {
   formatOutput,
   handleBrowserError,
   ActionError,
   NavigationError,
-} from './stagehandUtils';
+} from '../src/commands/browser/stagehand/stagehandUtils';
 import { ConstructorParams, Stagehand, BrowserContext, InitResult, LogLine, BrowserResult } from '@browserbasehq/stagehand';
-import { loadConfig } from '../../../config';
+import { loadConfig, loadEnv } from '../src/config';
 import {
   loadStagehandConfig,
   validateStagehandConfig,
   getStagehandApiKey,
   getStagehandModel,
-} from './config';
-import type { SharedBrowserCommandOptions } from '../browserOptions';
+} from '../src/commands/browser/stagehand/config';
+import type { SharedBrowserCommandOptions } from '../src/commands/browser/browserOptions';
 import {
   setupConsoleLogging,
   setupNetworkMonitoring,
@@ -21,11 +21,14 @@ import {
   outputMessages,
   withVideoRecording,
   BROWSER_LAUNCHED_MESSAGE,
-} from '../utilsShared';
+} from '../src/commands/browser/utilsShared';
 import { chromium } from 'playwright';
 import path from "path";
 import fs from "fs";
 import os from "os";
+import { configDotenv } from 'dotenv';
+
+loadEnv();
 
 export class ActCommand implements Command {
   page: Stagehand['page'] | undefined;
@@ -79,11 +82,11 @@ export class ActCommand implements Command {
       );
       await Promise.race([initPromise, initTimeoutPromise])
 
-      // Setup console and network monitoring
-      consoleMessages = await setupConsoleLogging(stagehand.page, options || {});
-      networkMessages = await setupNetworkMonitoring(stagehand.page, options || {});
+    //   // Setup console and network monitoring
+    //   consoleMessages = await setupConsoleLogging(stagehand.page, options || {});
+    //   networkMessages = await setupNetworkMonitoring(stagehand.page, options || {});
 
-      this.page = stagehand.page;
+    //   this.page = stagehand.page;
       
       try {
         // Navigate with timeout
@@ -389,3 +392,14 @@ export type RecordVideoOptions = {
     height: number;
   };
 };
+
+
+for await (const message of new ActCommand().execute("test", {
+  url: "https://www.google.com",
+  timeout: 60000,
+  screenshot: "screenshot.png",
+  debug: true,
+  headless: false,
+})) {
+  console.log(message);
+}

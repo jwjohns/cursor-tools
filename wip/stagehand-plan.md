@@ -59,14 +59,44 @@ This document outlines the implementation plan for integrating Stagehand into `c
    - Improve error message formatting
    - Add debug output support
 
-### Phase 3: Schema and Validation
+### Phase 3: Video Recording Support 🔄 IN PROGRESS
+1. Core Implementation ✅ COMPLETED
+   - Added `video` option to `SharedBrowserCommandOptions`
+   - Implemented video recording in browser context
+   - Added utility functions for setup and cleanup
+   - Basic error handling
+   - Simple interface: `--video=<directory>`
+   - Sensible defaults (1280x720, WebM format)
+   - Timestamped subdirectories for organization
+
+2. Improvements Needed 🔄 IN PROGRESS
+   - Better error handling and user feedback:
+     - Add start recording message
+     - Verify file exists after recording
+     - Better error messages for failures
+   - Documentation:
+     - Update README.md with video option
+     - Update .cursorrules
+     - Document timestamped subdirectory behavior
+   - Testing:
+     - Add test cases for video recording
+     - Test error conditions
+     - Test with different browser commands
+
+3. Integration with Other Commands
+   - Add video support to `act` command
+   - Add video support to `extract` command
+   - Add video support to `observe` command
+   - Ensure consistent behavior across all commands
+
+### Phase 4: Schema and Validation
 1. Implement full schema handling for extract command:
    - Add support for file-based schemas
    - Implement inline schema parsing
    - Add schema validation
    - Add schema error handling
 
-### Phase 4: Documentation and Polish
+### Phase 5: Documentation and Polish
 1. Add comprehensive documentation:
    - Update README.md with command details
    - Add examples for each command
@@ -77,7 +107,7 @@ This document outlines the implementation plan for integrating Stagehand into `c
    - Include examples in help text
    - Document option combinations
 
-### Phase 5: Testing and Refinement
+### Phase 6: Testing and Refinement
 1. Add comprehensive tests:
    - Unit tests for each command
    - Integration tests with test server
@@ -101,11 +131,29 @@ Stagehand configuration is integrated into cursor-tools configuration system:
       "headless": true,
       "verbose": 1,
       "debugDom": false,
-      "enableCaching": false
+      "enableCaching": false,
+      "video": {
+        "enabled": false,
+        "size": {
+          "width": 1280,
+          "height": 720
+        },
+        "format": "webm"
+      }
     }
   }
 }
 ```
+
+**Video Recording Options:**
+- `enabled`: Whether video recording is enabled by default (boolean)
+- `size`: Default video resolution (width, height)
+- `format`: Video format (currently only 'webm' is supported)
+
+Can be overridden with command-line options:
+- `--video=<directory>`: Enable video recording and specify output directory
+- Videos are saved in timestamped subdirectories for organization
+- Each recording gets a unique filename based on the command and timestamp
 
 ## Dependencies ✅ COMPLETED
 
@@ -117,7 +165,7 @@ Stagehand configuration is integrated into cursor-tools configuration system:
 
 Current error classes implemented:
 - StagehandError (base class)
-- ActionNotFoundError
+- ActionError
 - ExtractionSchemaError
 - ObservationError
 - NavigationError
@@ -131,8 +179,20 @@ Pending improvements:
 
 ## Next Immediate Steps
 
-1. Integrate Stagehand extract API
-2. Integrate Stagehand observe API
-3. Implement full option parsing
-4. Enhance error handling and debug output
-5. Add comprehensive documentation
+1. Improve video recording implementation:
+   - Add start recording message in OpenCommand
+   - Add file existence check in stopVideoRecording
+   - Improve error messages and user feedback
+   - Update documentation (README.md and .cursorrules)
+
+2. Integrate video recording with other commands:
+   - Add to act command
+   - Add to extract command
+   - Add to observe command
+   - Test with each command type
+
+3. Integrate Stagehand extract API
+4. Integrate Stagehand observe API
+5. Implement full option parsing
+6. Enhance error handling and debug output
+7. Add comprehensive documentation

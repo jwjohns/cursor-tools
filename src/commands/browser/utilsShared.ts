@@ -1,6 +1,10 @@
 import type { Page } from 'playwright';
 import type { SharedBrowserCommandOptions } from './browserOptions';
+import { existsSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
+import type { CommandGenerator } from '../../types';
 
+export const BROWSER_LAUNCHED_MESSAGE = 'Browser launched';
 /**
  * Formats a console message with location and stack trace information.
  *
@@ -204,4 +208,108 @@ export function outputMessages(
   }
 
   return output;
+}
+
+/**
+ * Sets up video recording directory for Playwright
+ */
+export async function setupVideoRecording(
+  options: SharedBrowserCommandOptions
+): Promise<string | null> {
+  if (!options.video) {
+    return null;
+  }
+
+  try {
+    const videoDir = join(options.video, new Date().toISOString().replace(/[:.]/g, '-'))
+    
+    // Ensure the video directory exists
+    if (!existsSync(videoDir)) {
+      mkdirSync(videoDir, { recursive: true });
+    }
+
+    // Return the directory path - actual recording is handled by browser context
+    return videoDir;
+  } catch (error) {
+    console.error('Failed to setup video directory:', error);
+    return null;
+  }
+}
+
+/**
+ * Gets the path of the recorded video and returns a message
+ */
+export async function stopVideoRecording(
+  page: Page,
+  videoDir: string | null
+): Promise<string | undefined> {
+  if (!videoDir) {
+    return undefined;
+  }
+
+  try {
+    const video = page.video();
+    if (!video) {
+      return undefined;
+    }
+    
+    const path = await video.path();
+    return `Video saved to ${path}\n`;
+  } catch (error) {
+    console.error('Failed to get video path:', error);
+    return undefined;
+  }
+}
+
+type ExecuteFunction = (
+  query: string,
+  options?: SharedBrowserCommandOptions
+) => CommandGenerator;
+
+/**
+ * Wraps a command's execute function with video recording functionality
+ */
+export function withVideoRecording(execute: ExecuteFunction): ExecuteFunction {
+  return async function* (
+    this: any,  // Preserve the this context
+    query: string,
+    options?: SharedBrowserCommandOptions
+  ): CommandGenerator {
+    let videoPath: string | null = null;
+    let browser: any;
+
+    const videoDir = options?.video;
+    if (!videoDir) {
+      yield* execute.call(this, query, options);
+    } else {
+
+      const close = async (): Promise<string> => {
+          if (videoPath && this.page) {
+            console.log("stopping video recording", {videoPath})
+            const videoMessage = await stopVideoRecording(this.page, videoPath);
+            if (videoMessage) {
+              return videoMessage;
+            } else {
+              return "No video found, this is probably a bug in cursor-tools, please report it to eastlondonDev on twitter or on github to https://github.com/eastlondondev/cursor-tools/issues"
+            }
+          } else {
+            return "No page or video path found to record, this is probably a bug in cursor-tools, please report it to eastlondonDev on twitter or on github to https://github.com/eastlondondev/cursor-tools/issues"
+          }
+      };
+
+      try {
+        // Call the original execute function with the correct this context
+        for await (const message of execute.call(this, query, options)) {
+          console.log("video message", { message, options })
+          yield message;
+        }
+        yield await close()
+      }
+      catch (error) {
+        const closeMessage = await close();
+        console.error(closeMessage);
+        throw error;
+      }
+    };
+  }
 }

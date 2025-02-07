@@ -46,7 +46,7 @@ export const defaultConfig: Config = {
   browser: {
     headless: true,
     defaultViewport: '1280x720',
-    timeout: 30000, // 30 seconds
+    timeout: 60000, // 60 seconds
   },
   stagehand: {
     provider: 'openai',

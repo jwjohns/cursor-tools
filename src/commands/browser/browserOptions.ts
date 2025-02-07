@@ -18,6 +18,8 @@ export interface SharedBrowserCommandOptions extends CommandOptions {
   console?: boolean;
   /** Whether to capture and display network activity */
   network?: boolean;
+  /** Directory to save video recordings to */
+  video?: string;
 }
 
 /**

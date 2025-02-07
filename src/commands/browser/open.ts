@@ -8,7 +8,10 @@ import {
   setupNetworkMonitoring,
   captureScreenshot,
   outputMessages,
+  setupVideoRecording,
+  stopVideoRecording,
 } from './utilsShared';
+import { join } from 'path';
 
 // Helper function to parse time duration string to milliseconds
 function parseTimeDuration(duration: string): number | null {
@@ -82,32 +85,22 @@ export class OpenCommand implements Command {
         return;
       }
 
-      const url = options.url; // Store URL to ensure TypeScript knows it's defined
+      const url = options.url;
 
       // Set default values for html, network, and console options if not provided
-      console.log('Before defaults - options:', {
-        html: options.html,
-        console: options.console,
-        network: options.network,
-        headless: options.headless,
-      });
       options = {
         ...options,
         html: options.html === undefined ? true : options.html,
         network: options.network === undefined ? true : options.network,
         console: options.console === undefined ? true : options.console,
       };
-      console.log('After defaults - options:', {
-        html: options.html,
-        console: options.console,
-        network: options.network,
-        headless: options.headless,
-      });
 
       const browserType = chromium;
       let browser;
+      let page;
       let consoleMessages: string[] = [];
       let networkMessages: string[] = [];
+      let videoPath: string | null = null;
 
       try {
         if (options.connectTo) {
@@ -116,22 +109,24 @@ export class OpenCommand implements Command {
         } else {
           yield 'Launching browser...';
           browser = await browserType.launch({
-            headless:
-              options.headless !== undefined
-                ? options.headless
-                : (this.config.browser?.headless ?? true),
+            headless: options.headless !== undefined ? options.headless : (this.config.browser?.headless ?? true),
           });
         }
 
-        // Create a context with favicon loading enabled
+        videoPath = await setupVideoRecording(options);
+        console.log('videoPath', videoPath);
         const context = await browser.newContext({
+          recordVideo: options.video ? {
+            dir: videoPath!,
+            size: { width: 1280, height: 720 }
+          } : undefined,
           serviceWorkers: 'allow',
           extraHTTPHeaders: {
-            Accept:
-              'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
           },
         });
-        const page = await context.newPage();
+
+        page = await context.newPage();
 
         // Set up console and network monitoring
         consoleMessages = await setupConsoleLogging(page, options);
@@ -194,6 +189,12 @@ export class OpenCommand implements Command {
       } catch (error) {
         yield `Browser command error: ${error instanceof Error ? error.message : 'Unknown error'}`;
       } finally {
+        if (videoPath && page) {
+          const videoMessage = await stopVideoRecording(page, videoPath);
+          if (videoMessage) {
+            yield videoMessage;
+          }
+        }
         if (browser) {
           await browser.close();
           yield 'Browser closed.\n';

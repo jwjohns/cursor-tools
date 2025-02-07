@@ -71,6 +71,7 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 --no-headless: Show browser UI (non-headless mode) for debugging
 --connect-to=<port>: Connect to existing Chrome instance
 --wait=<duration or selector>: Wait after page load (e.g., '5s', '#element-id', 'selector:.my-class')
+--video=<directory>: Save a video recording of the browser interaction to the specified directory (1280x720 resolution)
 
 **Additional Notes:**
 - For detailed information, see \`node_modules/cursor-tools/README.md\` (if installed locally).

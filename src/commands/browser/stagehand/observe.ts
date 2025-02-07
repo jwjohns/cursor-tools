@@ -14,6 +14,8 @@ import {
   setupNetworkMonitoring,
   captureScreenshot,
   outputMessages,
+  withVideoRecording,
+  BROWSER_LAUNCHED_MESSAGE,
 } from '../utilsShared';
 
 export class ObserveCommand implements Command {
@@ -44,6 +46,7 @@ export class ObserveCommand implements Command {
         );
       }
 
+      yield BROWSER_LAUNCHED_MESSAGE
       // TODO: Replace with actual Stagehand observe implementation once available
       // For now, we'll simulate observation using Playwright
       const result = await this.simulateObservation(page, query);
@@ -61,6 +64,7 @@ export class ObserveCommand implements Command {
         yield `Screenshot saved to ${options.screenshot}\n`;
       }
     } catch (error) {
+      console.error(error)
       yield handleBrowserError(error, options?.debug);
     } finally {
       await browser.close();
@@ -169,3 +173,6 @@ export class ObserveCommand implements Command {
     }
   }
 }
+
+// Wrap the execute method with video recording functionality
+ObserveCommand.prototype.execute = withVideoRecording(ObserveCommand.prototype.execute);

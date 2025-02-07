@@ -28,7 +28,8 @@ type StringOption =
   | 'screenshot'
   | 'viewport'
   | 'selector'
-  | 'wait';
+  | 'wait'
+  | 'video';
 type NumberOption = 'maxTokens' | 'timeout' | 'connectTo';
 type BooleanOption = 'console' | 'html' | 'network' | 'headless' | 'text' | 'debug';
 
@@ -61,6 +62,7 @@ const OPTION_KEYS: Record<string, OptionKey> = {
   text: 'text',
   wait: 'wait',
   debug: 'debug',
+  video: 'video',
 };
 
 // Set of option keys that are boolean flags (don't require a value)
@@ -105,6 +107,7 @@ async function main() {
     viewport: undefined,
     selector: undefined,
     wait: undefined,
+    video: undefined,
     // Number options
     maxTokens: undefined,
     timeout: undefined,

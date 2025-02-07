@@ -11,11 +11,11 @@
   "browser": {
     "headless": true,
     "defaultViewport": "1280x720",
-    "timeout": 30000
+    "timeout": 60000
   },
   "stagehand": {
     "provider": "openai",
-    "verbose": false,
+    "verbose": true,
     "debugDom": false,
     "enableCaching": true
   }
