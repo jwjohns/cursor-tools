@@ -76,7 +76,7 @@ Here are two examples:
 
 ## What is cursor-tools
 
-`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` works with with Cursor (and is compatible with other agents), When you run `cursor-tools install` we automatically add a prompt section to your `.cursorrules` file so that it works out of the box with Cursor, there's not need for additional prompts.
+`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` works with with Cursor (and is compatible with other agents), When you run `cursor-tools install` we automatically add a prompt section to your Cursor project rules (`.cursor/rules/cursor-tools.mdc` or legacy `.cursorrules` file) so that it works out of the box with Cursor, there's no need for additional prompts.
 
 `cursor-tools` requires a Perplexity API key and a Google AI API key.
 
@@ -93,7 +93,7 @@ This command will:
 
 1. Add `cursor-tools` as a dev dependency in your package.json
 2. Guide you through API key configuration
-3. Update your `.cursorrules` file for Cursor integration
+3. Update your Cursor project rules for Cursor integration (using `.cursor/rules/cursor-tools.mdc` or existing `.cursorrules`)
 
 ## Requirements
 
@@ -555,10 +555,12 @@ If no model is specified (either on the command line or in the config), a defaul
 Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
 
 ### Cursor Configuration
-`cursor-tools` automatically configures Cursor by updating your `.cursorrules` file during installation. This provides:
+`cursor-tools` automatically configures Cursor by updating your project rules during installation. This provides:
 - Command suggestions
 - Usage examples
 - Context-aware assistance
+
+For new installations, we use the recommended `.cursor/rules/cursor-tools.mdc` path. For existing installations, we maintain compatibility with the legacy `.cursorrules` file. If both files exist, we prefer the new path and show a warning.
 
 #### Cursor Agent Configuration:
 

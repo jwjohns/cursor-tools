@@ -9,7 +9,12 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'
 
 export const CURSOR_RULES_VERSION = packageJson.version; // Using version from package.json
 
-export const CURSOR_RULES_TEMPLATE = `<cursor-tools Integration>
+export const CURSOR_RULES_TEMPLATE = `---
+description: Global Rule
+globs: 
+---
+
+<cursor-tools Integration>
 # Instructions
 Use the following commands to get AI assistance:
 
@@ -97,50 +102,106 @@ Stagehand is a nickname for cursor-tools browser
 <!-- cursor-tools-version: ${CURSOR_RULES_VERSION} -->
 </cursor-tools Integration>`;
 
-export function checkCursorRules(workspacePath: string): {
+function isCursorRulesContentUpToDate(content: string) {
+  const startTag = '<cursor-tools Integration>';
+  const endTag = '</cursor-tools Integration>';
+  if (!content.includes(startTag) || !content.includes(endTag)) {
+    return {
+      needsUpdate: true as const,
+      message:
+        'cursor-tools section not found in cursor rules. Run `cursor-tools install .` to update.',
+    };
+  }
+
+  // Check version
+  const versionMatch = content.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
+  const currentVersion = versionMatch ? versionMatch[1] : '0';
+
+  if (currentVersion !== CURSOR_RULES_VERSION) {
+    return {
+      needsUpdate: true as const,
+      message: `Your cursor rules file is using version ${currentVersion}, but version ${CURSOR_RULES_VERSION} is available. Run \`cursor-tools install .\` to update.`,
+    };
+  }
+
+  return { needsUpdate: false as const };
+}
+
+// Add new types for better error handling and type safety
+type CursorRulesError = {
+  kind: 'error';
+  message: string;
+  targetPath: string;
+};
+
+type CursorRulesSuccess = {
+  kind: 'success';
   needsUpdate: boolean;
   message?: string;
-} {
-  const cursorRulesPath = join(workspacePath, '.cursorrules');
+  targetPath: string;
+  hasLegacyCursorRulesFile: boolean;
+};
 
-  if (!existsSync(cursorRulesPath)) {
+type CursorRulesResult = CursorRulesError | CursorRulesSuccess;
+
+export function checkCursorRules(workspacePath: string): CursorRulesResult {
+  const legacyPath = join(workspacePath, '.cursorrules');
+  const newPath = join(workspacePath, '.cursor', 'rules', 'cursor-tools.mdc');
+
+  // Check if either file exists
+  const legacyExists = existsSync(legacyPath);
+  const newExists = existsSync(newPath);
+
+  // If neither exists, prefer new path
+  if (!legacyExists && !newExists) {
     return {
+      kind: 'success',
       needsUpdate: true,
-      message:
-        'No .cursorrules file found. Run `cursor-tools install .` to set up Cursor integration.',
+      message: 'No cursor rules file found. Run `cursor-tools install .` to set up Cursor integration.',
+      targetPath: newPath,
+      hasLegacyCursorRulesFile: false
     };
   }
 
   try {
-    const content = readFileSync(cursorRulesPath, 'utf-8');
-
-    // Check if cursor-tools section exists
-    const startTag = '<cursor-tools Integration>';
-    const endTag = '</cursor-tools Integration>';
-    if (!content.includes(startTag) || !content.includes(endTag)) {
+    // If both exist, check new path first
+    if (newExists && legacyExists) {
+      const newContent = readFileSync(newPath, 'utf-8');
+      const result = isCursorRulesContentUpToDate(newContent);
       return {
-        needsUpdate: true,
-        message:
-          'cursor-tools section not found in .cursorrules. Run `cursor-tools install .` to update.',
+        kind: 'success',
+        ...result,
+        targetPath: newPath,
+        hasLegacyCursorRulesFile: true
       };
     }
 
-    // Check version
-    const versionMatch = content.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
-    const currentVersion = versionMatch ? versionMatch[1] : '0';
-
-    if (currentVersion !== CURSOR_RULES_VERSION) {
+    // If only new path exists
+    if (newExists) {
+      const newContent = readFileSync(newPath, 'utf-8');
+      const result = isCursorRulesContentUpToDate(newContent);
       return {
-        needsUpdate: true,
-        message: `Your .cursorrules file is using version ${currentVersion}, but version ${CURSOR_RULES_VERSION} is available. Run \`cursor-tools install .\` to update.`,
+        kind: 'success',
+        ...result,
+        targetPath: newPath,
+        hasLegacyCursorRulesFile: false
       };
     }
 
-    return { needsUpdate: false };
+    // Otherwise only legacy path exists
+    const legacyContent = readFileSync(legacyPath, 'utf-8');
+    const result = isCursorRulesContentUpToDate(legacyContent);
+    return {
+      kind: 'success',
+      ...result,
+      targetPath: legacyPath,
+      hasLegacyCursorRulesFile: true
+    };
   } catch (error) {
     return {
-      needsUpdate: true,
-      message: `Error reading .cursorrules: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      kind: 'error',
+      message: `Error reading cursor rules: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      targetPath: newPath
     };
   }
 }
