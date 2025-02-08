@@ -5,8 +5,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-### Changed
+### Added
+- Support for new Cursor IDE Project Rules standard using `.cursor/rules/cursor-tool.mdc`
+  - Fresh installs now use the new standard file location
+  - Existing installations maintain compatibility with legacy `.cursorrules`
+  - Warning messages guide users to migrate to the new standard
+  - Improved file handling with proper directory creation
 
+### Changed
 - Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
 - Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
 

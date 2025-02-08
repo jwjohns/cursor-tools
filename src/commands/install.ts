@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import { loadEnv } from '../config.ts';
-import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION } from '../cursorrules.ts';
+import { CURSOR_RULES_VERSION, writeCursorRules, getCursorRulesContent } from '../cursorrules.ts';
 
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';
@@ -186,17 +186,16 @@ export class InstallCommand implements Command {
     yield 'Checking API keys setup...\n';
     yield* this.setupApiKeys();
 
-    // 3. Update/create .cursorrules
+    // 3. Update/create cursor rules file
     try {
-      yield 'Checking .cursorrules...\n';
-      const cursorRulesPath = join(absolutePath, '.cursorrules');
+      yield 'Checking cursor rules setup...\n';
+      const absolutePath = join(process.cwd(), targetPath);
+      const legacyPath = join(absolutePath, '.cursorrules');
 
-      let existingContent = '';
+      let existingContent = getCursorRulesContent(absolutePath);
       let needsUpdate = true;
 
-      if (existsSync(cursorRulesPath)) {
-        existingContent = readFileSync(cursorRulesPath, 'utf-8');
-
+      if (existingContent) {
         // Check if cursor-tools section exists and version matches
         const startTag = '<cursor-tools Integration>';
         const endTag = '</cursor-tools Integration>';
@@ -209,37 +208,30 @@ export class InstallCommand implements Command {
           currentVersion === CURSOR_RULES_VERSION
         ) {
           needsUpdate = false;
-          yield '.cursorrules is up to date.\n';
+          yield 'Cursor rules file is up to date.\n';
         } else {
-          yield `Updating .cursorrules from version ${currentVersion} to ${CURSOR_RULES_VERSION}...\n`;
+          yield `Updating cursor rules from version ${currentVersion} to ${CURSOR_RULES_VERSION}...\n`;
         }
       } else {
-        yield 'Creating new .cursorrules file...\n';
+        yield 'Creating new cursor rules file...\n';
       }
 
       if (needsUpdate) {
-        // Replace existing cursor-tools section or append if not found
-        const startTag = '<cursor-tools Integration>';
-        const endTag = '</cursor-tools Integration>';
-        const startIndex = existingContent.indexOf(startTag);
-        const endIndex = existingContent.indexOf(endTag);
+        // For fresh installs or updates, always use the new standard
+        writeCursorRules(absolutePath);
+        yield 'Created .cursor/rules/cursor-tool.mdc with latest version.\n';
 
-        if (startIndex !== -1 && endIndex !== -1) {
-          // Replace existing section
-          const newContent =
-            existingContent.slice(0, startIndex) +
-            CURSOR_RULES_TEMPLATE.trim() +
-            existingContent.slice(endIndex + endTag.length);
-          writeFileSync(cursorRulesPath, newContent);
-        } else {
-          // Append new section
-          writeFileSync(cursorRulesPath, existingContent + CURSOR_RULES_TEMPLATE);
+        // If legacy file exists, suggest migration
+        if (existsSync(legacyPath)) {
+          yield '\nNotice: A legacy .cursorrules file was found.\n';
+          yield 'The new cursor rules have been written to .cursor/rules/cursor-tool.mdc.\n';
+          yield 'You can safely delete the .cursorrules file.\n';
         }
       }
 
       yield 'Installation completed successfully!\n';
     } catch (error) {
-      yield `Error updating .cursorrules: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+      yield `Error updating cursor rules: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
     }
   }
 }

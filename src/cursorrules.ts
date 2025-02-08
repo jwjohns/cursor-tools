@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
@@ -8,6 +8,9 @@ const __dirname = dirname(__filename);
 const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-8'));
 
 export const CURSOR_RULES_VERSION = packageJson.version; // Using version from package.json
+
+const NEW_CURSOR_RULES_PATH = '.cursor/rules/cursor-tool.mdc';
+const LEGACY_CURSOR_RULES_PATH = '.cursorrules';
 
 export const CURSOR_RULES_TEMPLATE = `<cursor-tools Integration>
 # Instructions
@@ -87,42 +90,64 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 <!-- cursor-tools-version: ${CURSOR_RULES_VERSION} -->
 </cursor-tools Integration>`;
 
+function getCursorRulesPath(workspacePath: string): string | null {
+  const newPath = join(workspacePath, NEW_CURSOR_RULES_PATH);
+  if (existsSync(newPath)) {
+    return newPath;
+  }
+
+  const legacyPath = join(workspacePath, LEGACY_CURSOR_RULES_PATH);
+  if (existsSync(legacyPath)) {
+    console.warn(
+      '\x1b[33m%s\x1b[0m', // Yellow text
+      'Warning: You are using the legacy .cursorrules file for cursor-tools integration.\n' +
+        'Please migrate to the new standard: .cursor/rules/cursor-tool.mdc\n' +
+        '  1. Copy the contents of .cursorrules to .cursor/rules/cursor-tool.mdc\n' +
+        '  2. Delete the .cursorrules file\n' +
+        '  Future versions of cursor-tools will only support .cursor/rules/cursor-tool.mdc'
+    );
+    return legacyPath;
+  }
+
+  return null; // Neither file found
+}
+
 export function checkCursorRules(workspacePath: string): {
   needsUpdate: boolean;
   message?: string;
 } {
-  const cursorRulesPath = join(workspacePath, '.cursorrules');
+  const rulesPath = getCursorRulesPath(workspacePath);
 
-  if (!existsSync(cursorRulesPath)) {
+  if (!rulesPath) {
     return {
       needsUpdate: true,
       message:
-        'No .cursorrules file found. Run `cursor-tools install .` to set up Cursor integration.',
+        'No .cursor/rules/cursor-tool.mdc or .cursorrules file found. Run `cursor-tools install .` to set up Cursor integration.',
     };
   }
 
   try {
-    const content = readFileSync(cursorRulesPath, 'utf-8');
-
-    // Check if cursor-tools section exists
+    const content = readFileSync(rulesPath, 'utf-8');
     const startTag = '<cursor-tools Integration>';
     const endTag = '</cursor-tools Integration>';
+
     if (!content.includes(startTag) || !content.includes(endTag)) {
       return {
         needsUpdate: true,
         message:
-          'cursor-tools section not found in .cursorrules. Run `cursor-tools install .` to update.',
+          'cursor-tools section not found in Cursor rules file. Run `cursor-tools install .` to update.',
       };
     }
 
-    // Check version
-    const versionMatch = content.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
+    const versionMatch = content.match(
+      /<!-- cursor-tools-version: ([\w.-]+) -->/
+    );
     const currentVersion = versionMatch ? versionMatch[1] : '0';
 
     if (currentVersion !== CURSOR_RULES_VERSION) {
       return {
         needsUpdate: true,
-        message: `Your .cursorrules file is using version ${currentVersion}, but version ${CURSOR_RULES_VERSION} is available. Run \`cursor-tools install .\` to update.`,
+        message: `Your Cursor rules file is using version ${currentVersion}, but version ${CURSOR_RULES_VERSION} is available. Run \`cursor-tools install .\` to update.`,
       };
     }
 
@@ -130,7 +155,37 @@ export function checkCursorRules(workspacePath: string): {
   } catch (error) {
     return {
       needsUpdate: true,
-      message: `Error reading .cursorrules: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      message: `Error reading Cursor rules file: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`,
     };
   }
+}
+
+// New function to get the content, handling the logic
+export function getCursorRulesContent(workspacePath: string): string | null {
+  const rulesPath = getCursorRulesPath(workspacePath);
+  if (!rulesPath) {
+    return null;
+  }
+  try {
+    return readFileSync(rulesPath, 'utf-8');
+  } catch (error) {
+    console.error(
+      `Error reading Cursor rules file: ${
+        error instanceof Error ? error.message : 'Unknown error'
+      }`
+    );
+    return null;
+  }
+}
+
+// New function to write the new cursor rules file, ensuring the directory exists
+export function writeCursorRules(workspacePath: string): void {
+  const newPath = join(workspacePath, NEW_CURSOR_RULES_PATH);
+  const dir = dirname(newPath);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
+  writeFileSync(newPath, CURSOR_RULES_TEMPLATE);
 }
