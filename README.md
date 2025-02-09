@@ -99,6 +99,9 @@ This command will:
 - Node.js 18 or later
 - Perplexity API key
 - Google Gemini API key
+- For browser commands:
+  - Playwright (`npm install playwright`)
+  - OpenAI API key or Anthropic API key (for `act`, `extract`, and `observe` commands)
 
 `cursor-tools` uses Gemini-2.0 because it is the only good LLM with a context window that goes up to 2 million tokens - enough to handle and entire codebase in one shot. Gemini 2.0 experimental models that we use by default are currently free to use on Google and you need a Google Cloud project to create an API key.
 
@@ -218,6 +221,18 @@ All browser commands support video recording of the browser interaction:
 - Recording starts when the browser opens and ends when it closes
 - Videos are saved as .webm files
 
+Example:
+```bash
+# Record a video of filling out a form
+cursor-tools browser act "Fill out registration form with name John Doe" --url "http://localhost:3000/signup" --video="./recordings"
+```
+
+#### Console and Network Logging
+Console logs and network activity are captured by default:
+- Use `--no-console` to disable console logging
+- Use `--no-network` to disable network logging
+- Logs are displayed in the command output
+
 #### Complex Actions
 The `act` command supports chaining multiple actions using the pipe (|) separator:
 
@@ -225,12 +240,42 @@ The `act` command supports chaining multiple actions using the pipe (|) separato
 # Login sequence with console/network logging (enabled by default)
 cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login"
 
-# Disable default console/network logging
-cursor-tools browser act "Click Login | Type credentials | Submit" --url "http://localhost:3000/login" --no-console --no-network
+# Form filling with multiple fields
+cursor-tools browser act "Select 'Mr' from title | Type 'John' into first name | Type 'Doe' into last name | Click Next" --url "http://localhost:3000/register"
 
 # Record complex interaction
 cursor-tools browser act "Fill form | Submit | Verify success" --url "http://localhost:3000/signup" --video="./recordings"
 ```
+
+#### Troubleshooting Browser Commands
+Common issues and solutions:
+
+1. **Element Not Found Errors**
+   - Use `--no-headless` to visually debug the page
+   - Use `browser observe` to see what elements Stagehand can identify
+   - Check if the element is in an iframe or shadow DOM
+   - Ensure the page has fully loaded (try increasing `--timeout`)
+
+2. **Stagehand API Errors**
+   - Verify your OpenAI or Anthropic API key is set correctly
+   - Check if you have sufficient API credits
+   - Try switching models using `--model`
+
+3. **Network Errors**
+   - Check your internet connection
+   - Verify the target website is accessible
+   - Try increasing the timeout with `--timeout`
+   - Check if the site blocks automated access
+
+4. **Video Recording Issues**
+   - Ensure the target directory exists and is writable
+   - Check disk space
+   - Video recording is not available with `--connect-to`
+
+5. **Performance Issues**
+   - Use `--headless` mode for better performance (default)
+   - Reduce the viewport size with `--viewport`
+   - Consider using `--connect-to` for development
 
 ### Documentation Generation
 Generate comprehensive documentation for your repository or any GitHub repository:
@@ -242,8 +287,10 @@ cursor-tools doc --output=docs.md
 cursor-tools doc --from-github=username/repo-name@branch
 cursor-tools doc --from-github=https://github.com/username/repo-name@branch
 
-# Save documentation with hints
-cursor-tools doc --from-github=eastlondoner/cursor-tools --output=docs/CURSOR-TOOLS.md --hint="only information about the doc command"
+# Save documentation to file (with and without a hint)
+# This is really useful to generate local documentation for libraries and dependencies
+cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md
+cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md --hint="only information about the doc command"
 ```
 
 
@@ -584,56 +631,14 @@ Contributions are welcome! Please feel free to submit a Pull Request. If you use
 
 :link: [Take Vinted reselling to the next level](https://resoled.it)
 
+---
+
+
+### [iterate.com](https://iterate.com)
+**<CTA1>** <CTA1 continued>.
+
+:link: [<CTA2>](https://resoled.it)
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
-
-### Browser Automation
-
-The `browser` commands provide powerful browser automation capabilities:
-
-- `browser open`: Open a URL and capture page content, console logs, and network activity
-- `browser act`: Execute actions on a webpage using natural language instructions
-- `browser observe`: Observe interactive elements on a webpage and suggest possible actions
-- `browser extract`: Extract data from a webpage based on natural language instructions
-
-#### Model Selection
-
-The `browser` commands support different AI models for processing. You can select the model using the `--model` option:
-
-```bash
-# Use gpt-4o
-cursor-tools browser act "Click Login" --url "https://example.com" --model=gpt-4o
-
-# Use Claude 3.5 Sonnet
-cursor-tools browser act "Click Login" --url "https://example.com" --model=claude-3-5-sonnet-latest
-```
-
-You can also set a default model in your `cursor-tools.config.json` file under the `stagehand` section:
-
-```json
-{
-  "stagehand": {
-    "provider": "openai", // or "anthropic"
-    "model": "gpt-4o"
-  }
-}
-```
-
-If no model is specified (either on the command line or in the config), a default model will be used based on your configured provider:
-
-- **OpenAI:** `o3-mini`
-- **Anthropic:** `claude-3-5-sonnet-latest`
-
-Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
-
-#### Stagehand Configuration
-
-The following options can be configured in `cursor-tools.config.json` under the `stagehand` section:
-
-- `stagehand.provider`: The AI provider to use ("openai" or "anthropic"). Determines which API key is required.
-- `stagehand.verbose`: Enable verbose logging for Stagehand operations (boolean, default: false).
-- `stagehand.debugDom`: Enable DOM debugging for Stagehand (boolean, default: false).
-- `stagehand.enableCaching`: Enable caching for Stagehand operations (boolean, default: true).
-- `stagehand.model`: The default model to use. See "Model Selection" above.
