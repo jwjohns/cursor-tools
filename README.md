@@ -101,7 +101,7 @@ This command will:
 - Perplexity API key
 - Google Gemini API key
 - For browser commands:
-  - Playwright (`npm install playwright`)
+  - Playwright (`npm install --global playwright`)
   - OpenAI API key or Anthropic API key (for `act`, `extract`, and `observe` commands)
 
 `cursor-tools` uses Gemini-2.0 because it is the only good LLM with a context window that goes up to 2 million tokens - enough to handle and entire codebase in one shot. Gemini 2.0 experimental models that we use by default are currently free to use on Google and you need a Google Cloud project to create an API key.
