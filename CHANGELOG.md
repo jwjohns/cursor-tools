@@ -10,6 +10,12 @@ All notable changes to this project will be documented in this file.
 - Browser commands (`open`, `act`, `observe`, `extract`) now have `--console` and `--network` options enabled by default. Use `--no-console` and `--no-network` to disable them. 
 - Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
 
+### Added
+- Added support for the `gpt-4o` model in browser commands (`act`, `extract`, `observe`)
+  - The model can be selected using the `--model=gpt-4o` command-line option
+  - The default model can be configured in `cursor-tools.config.json`
+  - If no model is specified, a default model is used based on the configured provider (OpenAI or Anthropic)
+
 ## [0.4.3-alpha.23] - 2024-03-22
 
 ### Fixed
