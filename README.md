@@ -99,6 +99,9 @@ This command will:
 - Node.js 18 or later
 - Perplexity API key
 - Google Gemini API key
+- For browser commands:
+  - Playwright (`npm install playwright`)
+  - OpenAI API key or Anthropic API key (for `act`, `extract`, and `observe` commands)
 
 `cursor-tools` uses Gemini-2.0 because it is the only good LLM with a context window that goes up to 2 million tokens - enough to handle and entire codebase in one shot. Gemini 2.0 experimental models that we use by default are currently free to use on Google and you need a Google Cloud project to create an API key.
 
@@ -195,6 +198,12 @@ Example:
 cursor-tools browser act "Fill out registration form with name John Doe" --url "http://localhost:3000/signup" --video="./recordings"
 ```
 
+#### Console and Network Logging
+Console logs and network activity are captured by default:
+- Use `--no-console` to disable console logging
+- Use `--no-network` to disable network logging
+- Logs are displayed in the command output
+
 #### Complex Actions
 The `act` command supports chaining multiple actions using the pipe (|) separator. This allows you to perform complex sequences of actions in a single command:
 
@@ -209,17 +218,14 @@ cursor-tools browser act "Select 'Mr' from title | Type 'John' into first name |
 Each instruction is executed in sequence, and the command will fail if any step fails. You can combine this with video recording and console and network logging to debug complex interactions:
 
 ```bash
-# Record a complex interaction
-cursor-tools browser act "Click Login | Type credentials | Click Submit | Wait for dashboard" --url "https://example.com" --video="./debug-recordings" --console --network
+# Record a complex interaction with logging
+cursor-tools browser act "Click Login | Type credentials | Click Submit | Wait for dashboard" --url "https://example.com" --video="./debug-recordings"
 ```
 
 Examples:
 ```bash
 # Basic usage: Open a URL and capture its HTML content
 cursor-tools browser open "http://localhost:3000" --html
-
-# Add console logs and network monitoring
-cursor-tools browser open "http://localhost:3000" --console --network
 
 # Capture a screenshot of the entire page
 cursor-tools browser open "http://localhost:3000" --screenshot="page.png"
@@ -233,12 +239,6 @@ cursor-tools browser open "http://localhost:3000" --connect-to=9222
 # AI-powered action: Click on a button using natural language instruction
 cursor-tools browser act "Click on 'Get Started' button" --url "http://localhost:3000"
 
-# AI-powered action: Multiple sequential actions using pipe separator and console and network logging
-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login" --console --network
-
-# Record video of browser interaction
-cursor-tools browser act "Fill out all fields on the registration form with dummy data" --url "http://localhost:3000/signup" --video="./recordings"
-
 # AI-powered data extraction: Extract product names and prices
 cursor-tools browser extract "Extract product names and prices" --url "http://localhost:3000/products"
 
@@ -246,40 +246,35 @@ cursor-tools browser extract "Extract product names and prices" --url "http://lo
 cursor-tools browser observe "List all interactive elements" --url "http://localhost:3000/signup"
 ```
 
-**Browser Command Options (for 'open', 'act', 'observe', 'extract'):**
---console: Capture browser console logs (enabled by default, use --no-console to disable)
---html: Capture page HTML content
---network: Capture network activity (enabled by default, use --no-network to disable)
---screenshot=<file path>: Save a screenshot of the page
---timeout=<milliseconds>: Set navigation timeout (default: 30000ms)
---viewport=<width>x<height>: Set viewport size (e.g., 1280x720)
---headless: Run browser in headless mode (default: true)
---no-headless: Show browser UI (non-headless mode) for debugging
---connect-to=<port>: Connect to existing Chrome instance
---wait=<duration or selector>: Wait after page load (e.g., '5s', '#element-id', 'selector:.my-class')
---video=<directory>: Save a video recording of the browser interaction to the specified directory (1280x720 resolution)
+#### Troubleshooting Browser Commands
+Common issues and solutions:
 
-**Notes on Browser Commands:**
-- All browser commands are stateless: each command starts with a fresh browser instance and closes it when done.
-- Multi step workflows involving state or combining multiple actions are supported in the `act` command using the pipe (|) separator (e.g., `cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url=https://example.com`)
-- Video recording is available for all browser commands using the `--video=<directory>` option. This will save a video of the entire browser interaction at 1280x720 resolution. The video file will be saved in the specified directory with a timestamp.
-- The `--console` and `--network` options are enabled by default. Use `--no-console` and `--no-network` to disable them.
+1. **Element Not Found Errors**
+   - Use `--no-headless` to visually debug the page
+   - Use `browser observe` to see what elements Stagehand can identify
+   - Check if the element is in an iframe or shadow DOM
+   - Ensure the page has fully loaded (try increasing `--timeout`)
 
-**Examples:**
+2. **Stagehand API Errors**
+   - Verify your OpenAI or Anthropic API key is set correctly
+   - Check if you have sufficient API credits
+   - Try switching models using `--model`
 
-```bash
-# Open a URL, capturing console logs and network activity (enabled by default)
-cursor-tools browser open "http://localhost:3000"
+3. **Network Errors**
+   - Check your internet connection
+   - Verify the target website is accessible
+   - Try increasing the timeout with `--timeout`
+   - Check if the site blocks automated access
 
-# Disable console and network monitoring
-cursor-tools browser open "http://localhost:3000" --no-console --no-network
+4. **Video Recording Issues**
+   - Ensure the target directory exists and is writable
+   - Check disk space
+   - Video recording is not available with `--connect-to`
 
-# AI-powered action: Multiple sequential actions using pipe separator (console and network logging are enabled by default)
-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login"
-
-# AI-powered action: Multiple sequential actions with console and network logging explicitly disabled
-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login" --no-console --no-network
-```
+5. **Performance Issues**
+   - Use `--headless` mode for better performance (default)
+   - Reduce the viewport size with `--viewport`
+   - Consider using `--connect-to` for development
 
 ### Documentation Generation
 Generate comprehensive documentation for your repository or any GitHub repository:
