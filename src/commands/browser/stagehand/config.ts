@@ -47,7 +47,6 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
   const debugDom = stagehandConfig.debugDom ?? false;
   const enableCaching = stagehandConfig.enableCaching ?? false;
   const timeout = stagehandConfig.timeout ?? 120000;
-  const model = stagehandConfig.model;
   let provider: 'anthropic' | 'openai';
 
   // Set provider based on available API keys
@@ -68,7 +67,7 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
     debugDom,
     enableCaching,
     timeout,
-    model,
+    model: stagehandConfig.model,
   };
 }
 
@@ -119,35 +118,16 @@ export function getStagehandApiKey(config: StagehandConfig): string {
  * @returns The model to use
  * @throws Error if an invalid model is provided and no valid default is available
  */
-export function getStagehandModel(config: StagehandConfig, options?: { model?: string }): AvailableModel {
-  // Command line option takes precedence
-  if (options?.model) {
-    const parseResult = availableModels.safeParse(options.model);
-    if (!parseResult.success) {
-      throw new Error(
-        `Invalid model: ${options.model}. Available models: ${Object.values(availableModels.enum).join(', ')}`
-      );
-    }
-    return parseResult.data;
-  }
-
-  // Config model is next in precedence
+export function getStagehandModel(config: StagehandConfig): AvailableModel {
+  // If a model is specified, log a warning and use it
   if (config.model) {
-    const parseResult = availableModels.safeParse(config.model);
-    if (!parseResult.success) {
-      throw new Error(
-        `Invalid model in config: ${config.model}. Available models: ${Object.values(availableModels.enum).join(', ')}`
-      );
-    }
-    return parseResult.data;
+    console.warn(
+      `Warning: Using custom model "${config.model}". Model names may change over time. ` +
+      `Default models are "claude-3-5-sonnet-latest" for Anthropic and "o3-mini" for OpenAI.`
+    );
+    return config.model as AvailableModel;
   }
-
-  // Default models as fallback
-  const defaultModel = config.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'o3-mini';
-  const parseResult = availableModels.safeParse(defaultModel);
-  if (!parseResult.success) {
-    throw new Error(`Default model is not valid: ${defaultModel}`);
-  }
-
-  return defaultModel;
+  
+  // Otherwise use defaults
+  return config.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'o3-mini';
 }
