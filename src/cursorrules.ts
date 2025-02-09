@@ -55,7 +55,7 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 2. **Without installation:** Use \`npx -y cursor-tools@latest "<command>"\` or \`bunx -y cursor-tools@latest "<command>"\`.
 
 **General Command Options (Supported by all commands):**
---model=<model name>: Specify an alternative AI model to use. Available models: ${Object.values(availableModels.enum).join(', ')}
+--model=<model name>: Specify an alternative AI model to use.
 --max-tokens=<number>: Control response length
 --save-to=<file path>: Save command output to a file (in *addition* to displaying it)
 --help: View all available options (help is not fully implemented yet)
