@@ -68,16 +68,16 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 
 **Browser Command Options (for 'open', 'act', 'observe', 'extract'):**
 --console: Capture browser console logs (enabled by default, use --no-console to disable)
---html: Capture page HTML content
+--html: Capture page HTML content (disabled by default)
 --network: Capture network activity (enabled by default, use --no-network to disable)
 --screenshot=<file path>: Save a screenshot of the page
---timeout=<milliseconds>: Set navigation timeout (default: 30000ms)
+--timeout=<milliseconds>: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
 --viewport=<width>x<height>: Set viewport size (e.g., 1280x720). When using --connect-to, viewport is only changed if this option is explicitly provided
 --headless: Run browser in headless mode (default: true)
 --no-headless: Show browser UI (non-headless mode) for debugging
---connect-to=<port>: Connect to existing Chrome instance
---wait=<duration or selector>: Wait after page load (e.g., '5s', '#element-id', 'selector:.my-class')
---video=<directory>: Save a video recording of the browser interaction to the specified directory (1280x720 resolution). Not available when using --connect-to
+--connect-to=<port>: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
+--wait=<time:duration or selector:css-selector>: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
+--video=<directory>: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
 
 **Additional Notes:**
 - For detailed information, see \`node_modules/cursor-tools/README.md\` (if installed locally).

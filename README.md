@@ -164,7 +164,7 @@ cursor-tools web "What's new in TypeScript 5.7?"
 ```
 
 ### Repository Context
-Leverage Google Gemini for codebase-aware assistance:
+Leverage Google Gemini 2.0 models with 1M+ token context windows for codebase-aware assistance:
 ```bash
 cursor-tools repo "Explain the authentication flow in this project, which files are involved?"
 ```
@@ -181,121 +181,69 @@ yarn add playwright
 pnpm add playwright
 ```
 
+#### Browser Command Options
+All browser commands (`open`, `act`, `observe`, `extract`) support these options:
+- `--console`: Capture browser console logs (enabled by default, use `--no-console` to disable)
+- `--html`: Capture page HTML content (disabled by default)
+- `--network`: Capture network activity (enabled by default, use `--no-network` to disable)
+- `--screenshot=<file path>`: Save a screenshot of the page
+- `--timeout=<milliseconds>`: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
+- `--viewport=<width>x<height>`: Set viewport size (e.g., 1280x720).
+- `--headless`: Run browser in headless mode (default: true)
+- `--no-headless`: Show browser UI (non-headless mode) for debugging
+- `--connect-to=<port>`: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
+- `--wait=<time:duration or selector:css-selector>`: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
+- `--video=<directory>`: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
+- `--url=<url>`: Required for `act`, `observe`, and `extract` commands
+
+**Note on Timeouts:**
+- Stagehand operations (act/extract): 120 seconds default timeout
+- Page navigation: 30 seconds default timeout
+- Page initialization: 30 seconds timeout
+- Page close: 5 seconds timeout
+- Observation: 30 seconds timeout
+
+**Notes on Connecting to an existing browser session with --connect-to**
+- DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.
+- When using `--connect-to`, viewport is only changed if `--viewport` is explicitly provided
+- Video recording is not available when using `--connect-to`
+- Special `--connect-to` values:
+  - `current`: Use the existing page without reloading
+  - `reload-current`: Use the existing page and refresh it (useful in development)
+
 #### Video Recording
-All browser commands support video recording of the browser interaction. This is useful for debugging and documentation:
+All browser commands support video recording of the browser interaction:
 - Use `--video=<directory>` to enable recording
-- Videos are saved at 1280x720 resolution
-- Each recording gets a unique timestamp
+- Videos are saved at 1280x720 resolution in timestamped subdirectories
 - Recording starts when the browser opens and ends when it closes
 - Videos are saved as .webm files
 
-Example:
-```bash
-# Record a video of filling out a form
-cursor-tools browser act "Fill out registration form with name John Doe" --url "http://localhost:3000/signup" --video="./recordings"
-```
-
 #### Complex Actions
-The `act` command supports chaining multiple actions using the pipe (|) separator. This allows you to perform complex sequences of actions in a single command:
+The `act` command supports chaining multiple actions using the pipe (|) separator:
 
 ```bash
-# Login sequence
-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Type 'password123' into password | Click Submit" --url "http://localhost:3000/signup"
-
-# Form filling
-cursor-tools browser act "Select 'Mr' from title | Type 'John' into first name | Type 'Doe' into last name | Click Next" --url "http://localhost:3000/register"
-```
-
-Each instruction is executed in sequence, and the command will fail if any step fails. You can combine this with video recording and console and network logging to debug complex interactions:
-
-```bash
-# Record a complex interaction
-cursor-tools browser act "Click Login | Type credentials | Click Submit | Wait for dashboard" --url "https://example.com" --video="./debug-recordings" --console --network
-```
-
-Examples:
-```bash
-# Basic usage: Open a URL and capture its HTML content
-cursor-tools browser open "http://localhost:3000" --html
-
-# Add console logs and network monitoring
-cursor-tools browser open "http://localhost:3000" --console --network
-
-# Capture a screenshot of the entire page
-cursor-tools browser open "http://localhost:3000" --screenshot="page.png"
-
-# Debug with visible browser window (non-headless mode)
-cursor-tools browser open "http://localhost:3000" --no-headless
-
-# Advanced: Connect to an existing Chrome instance
-cursor-tools browser open "http://localhost:3000" --connect-to=9222
-
-# AI-powered action: Click on a button using natural language instruction
-cursor-tools browser act "Click on 'Get Started' button" --url "http://localhost:3000"
-
-# AI-powered action: Multiple sequential actions using pipe separator and console and network logging
-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login" --console --network
-
-# Record video of browser interaction
-cursor-tools browser act "Fill out all fields on the registration form with dummy data" --url "http://localhost:3000/signup" --video="./recordings"
-
-# AI-powered data extraction: Extract product names and prices
-cursor-tools browser extract "Extract product names and prices" --url "http://localhost:3000/products"
-
-# AI-powered observation: List interactive elements on a page
-cursor-tools browser observe "List all interactive elements" --url "http://localhost:3000/signup"
-```
-
-**Browser Command Options (for 'open', 'act', 'observe', 'extract'):**
---console: Capture browser console logs (enabled by default, use --no-console to disable)
---html: Capture page HTML content
---network: Capture network activity (enabled by default, use --no-network to disable)
---screenshot=<file path>: Save a screenshot of the page
---timeout=<milliseconds>: Set navigation timeout (default: 30000ms)
---viewport=<width>x<height>: Set viewport size (e.g., 1280x720)
---headless: Run browser in headless mode (default: true)
---no-headless: Show browser UI (non-headless mode) for debugging
---connect-to=<port>: Connect to existing Chrome instance
---wait=<duration or selector>: Wait after page load (e.g., '5s', '#element-id', 'selector:.my-class')
---video=<directory>: Save a video recording of the browser interaction to the specified directory (1280x720 resolution)
-
-**Notes on Browser Commands:**
-- All browser commands are stateless: each command starts with a fresh browser instance and closes it when done.
-- Multi step workflows involving state or combining multiple actions are supported in the `act` command using the pipe (|) separator (e.g., `cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url=https://example.com`)
-- Video recording is available for all browser commands using the `--video=<directory>` option. This will save a video of the entire browser interaction at 1280x720 resolution. The video file will be saved in the specified directory with a timestamp.
-- The `--console` and `--network` options are enabled by default. Use `--no-console` and `--no-network` to disable them.
-
-**Examples:**
-
-```bash
-# Open a URL, capturing console logs and network activity (enabled by default)
-cursor-tools browser open "http://localhost:3000"
-
-# Disable console and network monitoring
-cursor-tools browser open "http://localhost:3000" --no-console --no-network
-
-# AI-powered action: Multiple sequential actions using pipe separator (console and network logging are enabled by default)
+# Login sequence with console/network logging (enabled by default)
 cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login"
 
-# AI-powered action: Multiple sequential actions with console and network logging explicitly disabled
-cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "http://localhost:3000/login" --no-console --no-network
+# Disable default console/network logging
+cursor-tools browser act "Click Login | Type credentials | Submit" --url "http://localhost:3000/login" --no-console --no-network
+
+# Record complex interaction
+cursor-tools browser act "Fill form | Submit | Verify success" --url "http://localhost:3000/signup" --video="./recordings"
 ```
 
 ### Documentation Generation
 Generate comprehensive documentation for your repository or any GitHub repository:
 ```bash
 # Document local repository
-cursor-tools doc
+cursor-tools doc --output=docs.md
 
-# Document remote GitHub repository
-cursor-tools doc --from-github=username/repo-name
-cursor-tools doc --from-github=username/repo-name@branch  # Specify branch
-cursor-tools doc --from-github=https://github.com/username/repo-name@branch  # HTTPS URL format
+# Document remote GitHub repository (both formats supported)
+cursor-tools doc --from-github=username/repo-name@branch
+cursor-tools doc --from-github=https://github.com/username/repo-name@branch
 
-# Save documentation to file
-# This is really useful to generate local documentation for libraries and dependencies
-cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md
-cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md --hint="only information about the doc command"
+# Save documentation with hints
+cursor-tools doc --from-github=eastlondoner/cursor-tools --output=docs/CURSOR-TOOLS.md --hint="only information about the doc command"
 ```
 
 
@@ -341,11 +289,11 @@ Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
     "maxTokens": 8000
   },
   "gemini": {
-    "model": "gemini-2.0-flash-thinking-exp-01-21",
+    "model": "gemini-2.0-pro-exp-02-05",
     "maxTokens": 10000
   },
   "tokenCount": {
-    "encoding": "o200k_base"  // Tokenizer to use for token counting (options: o200k_base, cl100k_base, gpt2, r50k_base, p50k_base, p50k_edit)
+    "encoding": "o200k_base"
   },
   "browser": {
     "defaultViewport": "1280x720",
@@ -356,8 +304,9 @@ Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
       "verbose": 1,
       "debugDom": false,
       "enableCaching": false,
-      "llmProvider": "openai", // or "anthropic" or "google"
-      "timeout": 30000 // Optional, timeout for operations in milliseconds
+      "model": "claude-3-5-sonnet-latest", // For Anthropic provider
+      "provider": "anthropic", // or "openai"
+      "timeout": 30000
     }
   }
 }
@@ -376,7 +325,8 @@ The configuration supports:
 - `browser.stagehand.verbose`: Verbosity level for browser commands
 - `browser.stagehand.debugDom`: Whether to enable debug output for browser commands
 - `browser.stagehand.enableCaching`: Whether to enable caching for browser commands
-- `browser.stagehand.llmProvider`: Language model provider for browser commands
+- `browser.stagehand.model`: The default model to use. See "Model Selection" above.
+- `browser.stagehand.provider`: The AI provider to use ("openai" or "anthropic"). Determines which API key is required.
 - `browser.stagehand.timeout`: Timeout for operations in milliseconds
 
 ### GitHub Authentication
