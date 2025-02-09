@@ -7,6 +7,7 @@ export interface StagehandConfig {
   debugDom: boolean;
   enableCaching: boolean;
   timeout?: number;
+  model?: string;
 }
 
 interface BrowserConfig {
@@ -19,6 +20,7 @@ interface BrowserConfig {
     debugDom?: boolean;
     enableCaching?: boolean;
     timeout?: number;
+    model?: string;
   };
 }
 
@@ -36,6 +38,7 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
   const debugDom = stagehandConfig.debugDom ?? false;
   const enableCaching = stagehandConfig.enableCaching ?? false;
   const timeout = stagehandConfig.timeout ?? 120000;
+  const model = stagehandConfig.model;
   let provider: 'anthropic' | 'openai';
 
   // Set provider based on available API keys
@@ -56,6 +59,7 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
     debugDom,
     enableCaching,
     timeout,
+    model,
   };
 }
 
@@ -93,6 +97,17 @@ export function getStagehandApiKey(config: StagehandConfig): string {
   return apiKey;
 }
 
-export function getStagehandModel(config: StagehandConfig): AvailableModel {
+export function getStagehandModel(config: StagehandConfig, options?: { model?: string }): AvailableModel {
+  // Command line option takes precedence
+  if (options?.model) {
+    return options.model as AvailableModel;
+  }
+
+  // Config model is next in precedence
+  if (config.model) {
+    return config.model as AvailableModel;
+  }
+
+  // Default models as fallback
   return config.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'o3-mini';
 }

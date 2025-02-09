@@ -38,7 +38,13 @@ interface ObservationResult {
 
 export class ObserveCommand implements Command {
   async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
-    if (!options?.url) {
+    if (!query) {
+      yield 'Please provide an instruction and URL. Usage: browser observe "<instruction>" --url <url>';
+      return;
+    }
+
+    const url = options?.url;
+    if (!url) {
       yield 'Please provide a URL using the --url option';
       return;
     }
@@ -58,7 +64,7 @@ export class ObserveCommand implements Command {
         headless: options?.headless ?? stagehandConfig.headless,
         verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
         debugDom: options?.debug ?? stagehandConfig.debugDom,
-        modelName: getStagehandModel(stagehandConfig),
+        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
         apiKey: getStagehandApiKey(stagehandConfig),
         enableCaching: stagehandConfig.enableCaching,
         logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),

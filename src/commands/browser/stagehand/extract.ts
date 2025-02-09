@@ -29,7 +29,7 @@ overrideStagehandInit();
 export class ExtractCommand implements Command {
   async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
     if (!query) {
-      yield 'Please provide an extraction instruction and URL. Usage: browser extract "<instruction>" --url <url>';
+      yield 'Please provide an instruction and URL. Usage: browser extract "<instruction>" --url <url>';
       return;
     }
 
@@ -54,7 +54,7 @@ export class ExtractCommand implements Command {
         headless: options?.headless ?? stagehandConfig.headless,
         verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
         debugDom: options?.debug ?? stagehandConfig.debugDom,
-        modelName: getStagehandModel(stagehandConfig),
+        modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
         apiKey: getStagehandApiKey(stagehandConfig),
         enableCaching: stagehandConfig.enableCaching,
         logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
