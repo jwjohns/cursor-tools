@@ -638,3 +638,52 @@ Contributions are welcome! Please feel free to submit a Pull Request. If you use
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
+
+### Browser Automation
+
+The `browser` commands provide powerful browser automation capabilities:
+
+- `browser open`: Open a URL and capture page content, console logs, and network activity
+- `browser act`: Execute actions on a webpage using natural language instructions
+- `browser observe`: Observe interactive elements on a webpage and suggest possible actions
+- `browser extract`: Extract data from a webpage based on natural language instructions
+
+#### Model Selection
+
+The `browser` commands support different AI models for processing. You can select the model using the `--model` option:
+
+```bash
+# Use gpt-4o
+cursor-tools browser act "Click Login" --url "https://example.com" --model=gpt-4o
+
+# Use Claude 3.5 Sonnet
+cursor-tools browser act "Click Login" --url "https://example.com" --model=claude-3-5-sonnet-latest
+```
+
+You can also set a default model in your `cursor-tools.config.json` file under the `stagehand` section:
+
+```json
+{
+  "stagehand": {
+    "provider": "openai", // or "anthropic"
+    "model": "gpt-4o"
+  }
+}
+```
+
+If no model is specified (either on the command line or in the config), a default model will be used based on your configured provider:
+
+- **OpenAI:** `o3-mini`
+- **Anthropic:** `claude-3-5-sonnet-latest`
+
+Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
+
+#### Stagehand Configuration
+
+The following options can be configured in `cursor-tools.config.json` under the `stagehand` section:
+
+- `stagehand.provider`: The AI provider to use ("openai" or "anthropic"). Determines which API key is required.
+- `stagehand.verbose`: Enable verbose logging for Stagehand operations (boolean, default: false).
+- `stagehand.debugDom`: Enable DOM debugging for Stagehand (boolean, default: false).
+- `stagehand.enableCaching`: Enable caching for Stagehand operations (boolean, default: true).
+- `stagehand.model`: The default model to use. See "Model Selection" above.

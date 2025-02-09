@@ -1,4 +1,13 @@
-import type { AvailableModel } from '@browserbasehq/stagehand';
+import { z } from 'zod';
+
+// Define available models
+export const availableModels = z.enum([
+  'claude-3-5-sonnet-latest',
+  'o3-mini',
+  'gpt-4o',
+]);
+
+export type AvailableModel = z.infer<typeof availableModels>;
 
 export interface StagehandConfig {
   provider: 'anthropic' | 'openai';
@@ -97,17 +106,48 @@ export function getStagehandApiKey(config: StagehandConfig): string {
   return apiKey;
 }
 
+/**
+ * Get the Stagehand model to use based on the following precedence:
+ * 1. Command line option (--model)
+ * 2. Configuration file (cursor-tools.config.json)
+ * 3. Default model based on provider (claude-3-5-sonnet-latest for Anthropic, o3-mini for OpenAI)
+ * 
+ * If both command line and config models are invalid, falls back to the default model for the provider.
+ * 
+ * @param config The Stagehand configuration
+ * @param options Optional command line options
+ * @returns The model to use
+ * @throws Error if an invalid model is provided and no valid default is available
+ */
 export function getStagehandModel(config: StagehandConfig, options?: { model?: string }): AvailableModel {
   // Command line option takes precedence
   if (options?.model) {
-    return options.model as AvailableModel;
+    const parseResult = availableModels.safeParse(options.model);
+    if (!parseResult.success) {
+      throw new Error(
+        `Invalid model: ${options.model}. Available models: ${Object.values(availableModels.enum).join(', ')}`
+      );
+    }
+    return parseResult.data;
   }
 
   // Config model is next in precedence
   if (config.model) {
-    return config.model as AvailableModel;
+    const parseResult = availableModels.safeParse(config.model);
+    if (!parseResult.success) {
+      throw new Error(
+        `Invalid model in config: ${config.model}. Available models: ${Object.values(availableModels.enum).join(', ')}`
+      );
+    }
+    return parseResult.data;
   }
 
   // Default models as fallback
-  return config.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'o3-mini';
+  const defaultModel = config.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'o3-mini';
+  const parseResult = availableModels.safeParse(defaultModel);
+  if (!parseResult.success) {
+    throw new Error(`Default model is not valid: ${defaultModel}`);
+  }
+
+  return defaultModel;
 }
