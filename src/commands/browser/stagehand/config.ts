@@ -116,7 +116,6 @@ export function getStagehandApiKey(config: StagehandConfig): string {
  * @param config The Stagehand configuration
  * @param options Optional command line options
  * @returns The model to use
- * @throws Error if an invalid model is provided and no valid default is available
  */
 export function getStagehandModel(config: StagehandConfig): AvailableModel {
   // If a model is specified, log a warning and use it
