@@ -633,11 +633,10 @@ Contributions are welcome! Please feel free to submit a Pull Request. If you use
 
 ---
 
-
 ### [iterate.com](https://iterate.com)
-**<CTA1>** <CTA1 continued>.
+**Build self-driving startups** with autonomous AI agents that run your company.
 
-:link: [<CTA2>](https://resoled.it)
+:link: [AI Engineer in London? Join the startup revolution](https://iterate.com)
 
 ## License
 
