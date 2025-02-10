@@ -113,11 +113,14 @@ export function getStagehandApiKey(config: StagehandConfig): string {
  * @param options Optional command line options
  * @returns The model to use
  */
-export function getStagehandModel(config: StagehandConfig, options?: {model?: string}): AvailableModel {
+export function getStagehandModel(
+  config: StagehandConfig,
+  options?: { model?: string }
+): AvailableModel {
   // If a model is specified, log a warning and use it
   const modelToUse = options?.model ?? config.model;
   const parseAttempt = availableModels.safeParse(modelToUse);
-  if(!parseAttempt.success) {
+  if (!parseAttempt.success) {
     console.warn(
       `Warning: Using unfamiliar model "${config.model}" this may be a mistake.` +
         `Typical models are "claude-3-5-sonnet-latest" for Anthropic and "o3-mini" or "gpt-4o" for OpenAI.`
