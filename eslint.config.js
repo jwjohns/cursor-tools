@@ -7,6 +7,7 @@ export default [
   eslint.configs.recommended,
   {
     files: ['src/**/*.ts', 'src/*.ts'],
+    ignores: ['src/commands/browser/stagehand/stagehandScript.ts'],
     languageOptions: {
       parser: tseslintParser,
       parserOptions: {

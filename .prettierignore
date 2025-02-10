@@ -28,3 +28,4 @@ coverage/
 
 # Other
 repomix-output.txt
+src/commands/browser/stagehand/stagehandScript.ts

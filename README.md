@@ -7,7 +7,8 @@
 ### The AI Team
 - Perplexity to search the web and perform deep research
 - Gemini 2.0 for huge whole-codebase context window, search grounding and reasoning
-- (coming soon) o3 for browser operation to test and debug web apps
+- Stagehand for browser operation to test and debug web apps (uses Anthropic or OpenAI models)
+
 
 ### New Skills for your existing Agent
 - Work with GitHub Issues and Pull Requests
@@ -147,6 +148,16 @@ Note: in most cases you can say "generate documentation" instead of "use cursor-
 
 Note: in most cases you can say "fetch issue 123" or "fetch PR 321" instead of "use cursor-tools github" and it will work the same.
 
+### Use browser automation
+"Use cursor-tools to open the users page and check the error in the console logs, fix it"
+
+"Use cursor-tools to test the form field validation logic. Take screenshots of each state"
+
+"Use cursor-tools to open https://example.com/foo the and check the error in the network logs, what could be causing it?"
+
+Note: in most cases you can say "Use Stagehand" instead of "use cursor-tools" and it will work the same.
+
+
 ## Authentication and API Keys
 `cursor-tools` requires API keys for both Perplexity AI and Google Gemini. These can be configured in two ways:
 
@@ -158,21 +169,28 @@ Note: in most cases you can say "fetch issue 123" or "fetch PR 321" instead of "
    ```
 
 
-## Core Features
+## AI Team Features
 
-### Web Search
+### Perplexity: Web Search & Research
 Use Perplexity AI to get up-to-date information directly within Cursor:
 ```bash
 cursor-tools web "What's new in TypeScript 5.7?"
 ```
 
-### Repository Context
+### Gemini 2.0: Repository Context
 Leverage Google Gemini 2.0 models with 1M+ token context windows for codebase-aware assistance:
 ```bash
 cursor-tools repo "Explain the authentication flow in this project, which files are involved?"
 ```
 
-### Browser Automation
+Repository context is created using Repomix. See repomix configuration section below for details on how to change repomix behaviour.
+
+Above 1M tokens cursor-tools will always send requests to Gemini 2.0 Pro as it is the only model that supports 1M+ tokens.
+
+The Gemini 2.0 Pro context limit is 2M tokens, you can add filters to .repomixignore if your repomix context is above this limit.
+
+
+### Stagehand: Browser Automation
 Automate browser interactions for web scraping, testing, and debugging:
 
 **Important:** The `browser` command requires the Playwright package to be installed separately in your project:
@@ -182,6 +200,51 @@ npm install playwright
 yarn add playwright
 # or
 pnpm add playwright
+```
+
+1. `open` - Open a URL and capture page content:
+```bash
+# Open and capture HTML content, console logs and network activity (enabled by default)
+cursor-tools browser open "https://example.com" --html
+
+# Take a screenshot
+cursor-tools browser open "https://example.com" --screenshot=page.png
+
+# Debug in an interactive browser session
+cursor-tools browser open "https://example.com" --connect-to=9222
+```
+
+2. `act` - Execute actions using natural language - Agent tells the browser-use agent what to do:
+```bash
+# Single action
+cursor-tools browser act "Login as 'user@example.com'" --url "https://example.com/login"
+
+# Multi-step workflow using pipe separator
+cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url "https://example.com"
+
+# Record interaction video
+cursor-tools browser act "Fill out registration form" --url "https://example.com/signup" --video="./recordings"
+```
+
+3. `observe` - Analyze interactive elements:
+```bash
+# Get overview of interactive elements
+cursor-tools browser observe "What can I interact with?" --url "https://example.com"
+
+# Find specific elements
+cursor-tools browser observe "Find the login form" --url "https://example.com"
+```
+
+4. `extract` - Extract data using natural language:
+```bash
+# Extract specific content
+cursor-tools browser extract "Get all product prices" --url "https://example.com/products"
+
+# Save extracted content
+cursor-tools browser extract "Get article text" --url "https://example.com/blog" --html > article.html
+
+# Extract with network monitoring
+cursor-tools browser extract "Get API responses" --url "https://example.com/api-test" --network
 ```
 
 #### Browser Command Options
@@ -199,12 +262,6 @@ All browser commands (`open`, `act`, `observe`, `extract`) support these options
 - `--video=<directory>`: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
 - `--url=<url>`: Required for `act`, `observe`, and `extract` commands
 
-**Note on Timeouts:**
-- Stagehand operations (act/extract): 120 seconds default timeout
-- Page navigation: 30 seconds default timeout
-- Page initialization: 30 seconds timeout
-- Page close: 5 seconds timeout
-- Observation: 30 seconds timeout
 
 **Notes on Connecting to an existing browser session with --connect-to**
 - DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.
@@ -215,7 +272,7 @@ All browser commands (`open`, `act`, `observe`, `extract`) support these options
   - `reload-current`: Use the existing page and refresh it (useful in development)
 
 #### Video Recording
-All browser commands support video recording of the browser interaction:
+All browser commands support video recording of the browser interaction in headless mode (not supported with --connect-to):
 - Use `--video=<directory>` to enable recording
 - Videos are saved at 1280x720 resolution in timestamped subdirectories
 - Recording starts when the browser opens and ends when it closes
@@ -277,7 +334,47 @@ Common issues and solutions:
    - Reduce the viewport size with `--viewport`
    - Consider using `--connect-to` for development
 
-### Documentation Generation
+
+## Skills
+
+### GitHub Integration
+Access GitHub issues and pull requests directly from the command line with rich formatting and full context:
+
+```bash
+# List recent PRs or issues
+cursor-tools github pr
+cursor-tools github issue
+
+# View specific PR or issue with full discussion
+cursor-tools github pr 123
+cursor-tools github issue 456
+```
+
+The GitHub commands provide:
+- View of 10 most recent open PRs or issues when no number specified
+- Detailed view of specific PR/issue including:
+  - PR/Issue description and metadata
+  - Code review comments grouped by file (PRs only)
+  - Full discussion thread
+  - Labels, assignees, milestones and reviewers
+- Support for both local repositories and remote GitHub repositories
+- Markdown-formatted output for readability
+
+**Authentication Methods:**
+The commands support multiple authentication methods:
+1. GitHub token via environment variable: `GITHUB_TOKEN=your_token_here`
+2. GitHub CLI integration (if `gh` is installed and logged in)
+3. Git credentials (stored tokens or Basic Auth)
+
+Without authentication:
+- Public repositories: Limited to 60 requests per hour
+- Private repositories: Not accessible
+
+With authentication:
+- Public repositories: 5,000 requests per hour
+- Private repositories: Full access (with appropriate token scopes)
+
+### Documentation Generation (uses Gemini 2.0)
 Generate comprehensive documentation for your repository or any GitHub repository:
 ```bash
 # Document local repository
@@ -292,37 +389,6 @@ cursor-tools doc --from-github=https://github.com/username/repo-name@branch
 cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md
 cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-TOOLS.md --hint="only information about the doc command"
 ```
-
-
-### GitHub Integration
-Access GitHub issues and pull requests directly from the command line:
-```bash
-# List recent PRs
-cursor-tools github pr
-
-# View specific PR with full discussion and code review comments
-cursor-tools github pr 123
-
-# List recent issues
-cursor-tools github issue
-
-# View specific issue with full discussion thread
-cursor-tools github issue 456
-
-# Access other repositories using --from-github or --repo
-cursor-tools github pr --from-github microsoft/vscode
-cursor-tools github issue 789 --from-github microsoft/vscode
-```
-
-The GitHub commands provide:
-- If no PR/Issue number is specified, view of 10 most recent open PRs or issues
-- If a PR/Issue number is specified, detailed view of specific PR or issue including:
-  - PR/Issue description and metadata
-  - Code review comments grouped by file (PRs only)
-  - Full Discussion thread
-  - Labels, assignees, milestones and reviewers as appropriate
-- Support for both local repositories and remote GitHub repositories
-- Markdown-formatted output for readability
 
 
 ## Configuration

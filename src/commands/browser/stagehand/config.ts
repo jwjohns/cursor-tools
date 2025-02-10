@@ -1,11 +1,7 @@
 import { z } from 'zod';
 
 // Define available models
-export const availableModels = z.enum([
-  'claude-3-5-sonnet-latest',
-  'o3-mini',
-  'gpt-4o',
-]);
+export const availableModels = z.enum(['claude-3-5-sonnet-latest', 'o3-mini', 'gpt-4o']);
 
 export type AvailableModel = z.infer<typeof availableModels>;
 
@@ -110,23 +106,25 @@ export function getStagehandApiKey(config: StagehandConfig): string {
  * 1. Command line option (--model)
  * 2. Configuration file (cursor-tools.config.json)
  * 3. Default model based on provider (claude-3-5-sonnet-latest for Anthropic, o3-mini for OpenAI)
- * 
+ *
  * If both command line and config models are invalid, falls back to the default model for the provider.
- * 
+ *
  * @param config The Stagehand configuration
  * @param options Optional command line options
  * @returns The model to use
  */
-export function getStagehandModel(config: StagehandConfig): AvailableModel {
+export function getStagehandModel(config: StagehandConfig, options?: {model?: string}): AvailableModel {
   // If a model is specified, log a warning and use it
-  if (config.model) {
+  const modelToUse = options?.model ?? config.model;
+  const parseAttempt = availableModels.safeParse(modelToUse);
+  if(!parseAttempt.success) {
     console.warn(
-      `Warning: Using custom model "${config.model}". Model names may change over time. ` +
-      `Default models are "claude-3-5-sonnet-latest" for Anthropic and "o3-mini" for OpenAI.`
+      `Warning: Using unfamiliar model "${config.model}" this may be a mistake.` +
+        `Typical models are "claude-3-5-sonnet-latest" for Anthropic and "o3-mini" or "gpt-4o" for OpenAI.`
     );
-    return config.model as AvailableModel;
+    return modelToUse as AvailableModel;
   }
-  
+
   // Otherwise use defaults
   return config.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'o3-mini';
 }

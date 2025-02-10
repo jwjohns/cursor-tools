@@ -2,7 +2,6 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
-import { availableModels } from './commands/browser/stagehand/config';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -29,14 +28,14 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 \`cursor-tools github pr [number]\` - Get the last 10 PRs, or a specific PR by number (e.g., \`cursor-tools github pr 123\`)
 \`cursor-tools github issue [number]\` - Get the last 10 issues, or a specific issue by number (e.g., \`cursor-tools github issue 456\`)
 
-**Browser Automation (Stateless):**
+**Stagehand Browser Automation:**
 \`cursor-tools browser open <url> [options]\` - Open a URL and capture page content, console logs, and network activity (e.g., \`cursor-tools browser open "https://example.com" --html\`)
 \`cursor-tools browser act "<instruction>" --url=<url> [options]\` - Execute actions on a webpage using natural language instructions (e.g., \`cursor-tools browser act "Click Login" --url=https://example.com\`)
 \`cursor-tools browser observe "<instruction>" --url=<url> [options]\` - Observe interactive elements on a webpage and suggest possible actions (e.g., \`cursor-tools browser observe "interactive elements" --url=https://example.com\`)
 \`cursor-tools browser extract "<instruction>" --url=<url> [options]\` - Extract data from a webpage based on natural language instructions (e.g., \`cursor-tools browser extract "product names" --url=https://example.com/products\`)
 
 **Notes on Browser Commands:**
-- All browser commands are stateless: each command starts with a fresh browser instance and closes it when done.
+- All browser commands are stateless unless --connect-to is used to connect to a long-lived interactive session. In disconnected mode each command starts with a fresh browser instance and closes it when done.
 - When using \`--connect-to\`, special URL values are supported:
   - \`current\`: Use the existing page without reloading
   - \`reload-current\`: Use the existing page and refresh it (useful in development)
@@ -79,6 +78,12 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 --wait=<time:duration or selector:css-selector>: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
 --video=<directory>: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
 
+**Nicknames**
+Users can ask for these tools using nicknames
+Gemini is a nickname for cursor-tools repo
+Perplexity is a nickname for cursor-tools web
+Stagehand is a nickname for cursor-tools browser
+
 **Additional Notes:**
 - For detailed information, see \`node_modules/cursor-tools/README.md\` (if installed locally).
 - Configuration is in \`cursor-tools.config.json\` (or \`~/.cursor-tools/config.json\`).
@@ -86,6 +91,8 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 - Browser commands require separate installation of Playwright: \`npm install --save-dev playwright\` or \`npm install -g playwright\`.
 - The default Stagehand model is set in \`cursor-tools.config.json\`, but can be overridden with the \`--model\` option.
 - Available models depend on your configured provider (OpenAI or Anthropic) in \`cursor-tools.config.json\`.
+- repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.
+- problems running browser commands may be because playwright is not installed. Recommend installing playwright globally.
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
 <!-- cursor-tools-version: ${CURSOR_RULES_VERSION} -->
 </cursor-tools Integration>`;
