@@ -20,6 +20,7 @@ interface BrowserConfig {
   defaultViewport?: string;
   timeout?: number;
   stagehand?: {
+    provider?: string;
     headless?: boolean;
     verbose?: boolean;
     debugDom?: boolean;
@@ -43,17 +44,43 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
   const debugDom = stagehandConfig.debugDom ?? false;
   const enableCaching = stagehandConfig.enableCaching ?? false;
   const timeout = stagehandConfig.timeout ?? 120000;
-  let provider: 'anthropic' | 'openai';
+  let provider: 'anthropic' | 'openai' | undefined = stagehandConfig.provider?.toLowerCase() as any;
 
-  // Set provider based on available API keys
-  if (process.env.ANTHROPIC_API_KEY) {
-    provider = 'anthropic';
-  } else if (process.env.OPENAI_API_KEY) {
-    provider = 'openai';
+  if(!provider) {
+    // Set provider based on available API keys
+    if (process.env.ANTHROPIC_API_KEY) {
+      provider = 'anthropic';
+      if(process.env.OPENAI_API_KEY) {
+        console.log('Defaulting to anthropic as AI provider for Stagehand')
+      }
+    } else if (process.env.OPENAI_API_KEY) {
+      provider = 'openai';
+    } else {
+      throw new Error(
+        'Either ANTHROPIC_API_KEY or OPENAI_API_KEY is required for Stagehand. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
+      );
+    }
   } else {
-    throw new Error(
-      'Either ANTHROPIC_API_KEY or OPENAI_API_KEY is required for Stagehand. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
-    );
+    switch(provider) {
+      case 'anthropic': {
+        if (!process.env.ANTHROPIC_API_KEY) {
+          throw new Error(
+            'ANTHROPIC_API_KEY is required for when Stagehand is configured for to use Anthropic. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
+          );
+        }
+        break;
+      }
+      case 'openai': {
+        if (!process.env.OPENAI_API_KEY) {
+          throw new Error(
+            'OPENAI_API_KEY is required for when Stagehand is configured for to use Anthropic. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
+          );
+        }
+        break;
+      }
+      default:
+        throw new Error("Unrecognized AI provider for stagehand " + provider);
+    }
   }
 
   return {
@@ -129,5 +156,12 @@ export function getStagehandModel(
   }
 
   // Otherwise use defaults
-  return config.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'o3-mini';
+  switch(config.provider) {
+    case 'anthropic': {
+      return 'claude-3-5-sonnet-latest';
+    }
+    case 'openai': {
+      return 'o3-mini';
+    }
+  }
 }

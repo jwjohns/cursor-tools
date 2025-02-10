@@ -438,7 +438,7 @@ The configuration supports:
 - `browser.stagehand.verbose`: Verbosity level for browser commands
 - `browser.stagehand.debugDom`: Whether to enable debug output for browser commands
 - `browser.stagehand.enableCaching`: Whether to enable caching for browser commands
-- `browser.stagehand.model`: The default model to use. See "Model Selection" above.
+- `browser.stagehand.model`: The default model to use. See "Model Selection" below.
 - `browser.stagehand.provider`: The AI provider to use ("openai" or "anthropic"). Determines which API key is required.
 - `browser.stagehand.timeout`: Timeout for operations in milliseconds
 
@@ -514,6 +514,45 @@ storage/
 This ensures that the documentation focuses on your actual source code and documentation files.
 Support to customize the input files to include is coming soon - open an issue if you run into problems here.
 
+#### Model Selection
+
+The `browser` commands support different AI models for processing. You can select the model using the `--model` option:
+
+```bash
+# Use gpt-4o
+cursor-tools browser act "Click Login" --url "https://example.com" --model=gpt-4o
+
+# Use Claude 3.5 Sonnet
+cursor-tools browser act "Click Login" --url "https://example.com" --model=claude-3-5-sonnet-latest
+```
+
+You can set a default provider in your `cursor-tools.config.json` file under the `stagehand` section:
+
+```json
+{
+  "stagehand": {
+    "provider": "openai", // or "anthropic"
+  }
+}
+```
+
+You can also set a default model in your `cursor-tools.config.json` file under the `stagehand` section:
+
+```json
+{
+  "stagehand": {
+    "provider": "openai", // or "anthropic"
+    "model": "gpt-4o"
+  }
+}
+```
+
+If no model is specified (either on the command line or in the config), a default model will be used based on your configured provider:
+
+- **OpenAI:** `o3-mini`
+- **Anthropic:** `claude-3-5-sonnet-latest`
+
+Available models depend on your configured provider (OpenAI or Anthropic) in `cursor-tools.config.json` and your API key.
 
 ### Cursor Configuration
 `cursor-tools` automatically configures Cursor by updating your `.cursorrules` file during installation. This provides:
