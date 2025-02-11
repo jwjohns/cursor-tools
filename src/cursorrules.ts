@@ -9,6 +9,19 @@ const packageJson = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'
 
 export const CURSOR_RULES_VERSION = packageJson.version; // Using version from package.json
 
+// Function to determine which cursor rules path to use
+export function getCursorRulesPath(workspacePath: string): { targetPath: string; isLegacy: boolean } {
+  const useLegacy = process.env.USE_LEGACY === 'true' || !process.env.USE_LEGACY;
+  const legacyPath = join(workspacePath, '.cursorrules');
+  const newPath = join(workspacePath, '.cursor', 'rules', 'cursor-tools.mdc');
+
+  if (useLegacy) {
+    return { targetPath: legacyPath, isLegacy: true };
+  }
+
+  return { targetPath: newPath, isLegacy: false };
+}
+
 export const CURSOR_RULES_TEMPLATE = `---
 description: Global Rule
 globs: 
@@ -145,64 +158,36 @@ type CursorRulesSuccess = {
 type CursorRulesResult = CursorRulesError | CursorRulesSuccess;
 
 export function checkCursorRules(workspacePath: string): CursorRulesResult {
-  const legacyPath = join(workspacePath, '.cursorrules');
-  const newPath = join(workspacePath, '.cursor', 'rules', 'cursor-tools.mdc');
+  const { targetPath, isLegacy } = getCursorRulesPath(workspacePath);
 
-  // Check if either file exists
-  const legacyExists = existsSync(legacyPath);
-  const newExists = existsSync(newPath);
+  // Check if the file exists
+  const exists = existsSync(targetPath);
 
-  // If neither exists, prefer new path
-  if (!legacyExists && !newExists) {
+  if (!exists) {
     return {
       kind: 'success',
       needsUpdate: true,
       message:
         'No cursor rules file found. Run `cursor-tools install .` to set up Cursor integration.',
-      targetPath: newPath,
-      hasLegacyCursorRulesFile: false,
+      targetPath,
+      hasLegacyCursorRulesFile: isLegacy,
     };
   }
 
   try {
-    // If both exist, check new path first
-    if (newExists && legacyExists) {
-      const newContent = readFileSync(newPath, 'utf-8');
-      const result = isCursorRulesContentUpToDate(newContent);
-      return {
-        kind: 'success',
-        ...result,
-        targetPath: newPath,
-        hasLegacyCursorRulesFile: true,
-      };
-    }
-
-    // If only new path exists
-    if (newExists) {
-      const newContent = readFileSync(newPath, 'utf-8');
-      const result = isCursorRulesContentUpToDate(newContent);
-      return {
-        kind: 'success',
-        ...result,
-        targetPath: newPath,
-        hasLegacyCursorRulesFile: false,
-      };
-    }
-
-    // Otherwise only legacy path exists
-    const legacyContent = readFileSync(legacyPath, 'utf-8');
-    const result = isCursorRulesContentUpToDate(legacyContent);
+    const content = readFileSync(targetPath, 'utf-8');
+    const result = isCursorRulesContentUpToDate(content);
     return {
       kind: 'success',
       ...result,
-      targetPath: legacyPath,
-      hasLegacyCursorRulesFile: true,
+      targetPath,
+      hasLegacyCursorRulesFile: isLegacy,
     };
   } catch (error) {
     return {
       kind: 'error',
       message: `Error reading cursor rules: ${error instanceof Error ? error.message : 'Unknown error'}`,
-      targetPath: newPath,
+      targetPath,
     };
   }
 }

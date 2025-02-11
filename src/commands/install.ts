@@ -24,6 +24,23 @@ async function getUserInput(prompt: string): Promise<string> {
   });
 }
 
+// Add this function after the getUserInput function
+async function askForCursorRulesDirectory(): Promise<boolean> {
+  // If USE_LEGACY is explicitly set, respect that setting
+  if (process.env.USE_LEGACY === 'true') {
+    return false;
+  }
+  if (process.env.USE_LEGACY === 'false') {
+    return true;
+  }
+
+  // Otherwise, ask the user
+  const answer = await getUserInput(
+    'Would you like to use the new .cursor/rules directory for cursor rules? (y/N): '
+  );
+  return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+}
+
 export class InstallCommand implements Command {
   private async *setupApiKeys(): CommandGenerator {
     loadEnv(); // Load existing env files if any
@@ -202,6 +219,11 @@ export class InstallCommand implements Command {
     // 4. Update/create cursor rules
     try {
       yield 'Checking cursor rules...\n';
+      
+      // Ask user for directory preference
+      const useNewDirectory = await askForCursorRulesDirectory();
+      process.env.USE_LEGACY = (!useNewDirectory).toString();
+      
       const result = checkCursorRules(absolutePath);
 
       if (result.kind === 'error') {
@@ -213,9 +235,24 @@ export class InstallCommand implements Command {
       let needsUpdate = result.needsUpdate;
 
       if (result.hasLegacyCursorRulesFile) {
-        yield '\n🚧 Warning: Legacy .cursorrules detected. This file will be deprecated in a future release. To migrate:\n' +
-          '  1) Move your rules to .cursor/rules/cursor-tools.mdc\n' +
-          '  2) Delete .cursorrules\n\n';
+        yield '\n🚧 Warning: Using legacy .cursorrules file. This file will be deprecated in a future release.\n' +
+          'To migrate to the new format:\n' +
+          '  1) Set USE_LEGACY=false in your environment\n' +
+          '  2) Run cursor-tools install . again\n' +
+          '  3) Delete .cursorrules once you confirm everything works\n\n';
+      }
+
+      // Create directories if using new path
+      if (!result.hasLegacyCursorRulesFile) {
+        const rulesDir = join(absolutePath, '.cursor', 'rules');
+        if (!existsSync(rulesDir)) {
+          try {
+            mkdirSync(rulesDir, { recursive: true });
+          } catch (error) {
+            yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+            return;
+          }
+        }
       }
 
       if (existsSync(result.targetPath)) {
