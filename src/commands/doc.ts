@@ -38,6 +38,18 @@ export class DocCommand implements Command {
     return { username: parts[0], reponame: parts[1], branch };
   }
 
+  private looksLikeGithubRepo(query: string): boolean {
+    // Check if it's a GitHub URL
+    if (query.startsWith('https://github.com/')) {
+      return true;
+    }
+
+    // Check if it matches the pattern owner/repo[@branch] 
+    // This regex checks for: alphanumeric+hyphens/alphanumeric+hyphens[@anything]
+    const repoPattern = /^[\w-]+\/[\w-]+(?:@[\w-./]+)?$/;
+    return repoPattern.test(query);
+  }
+
   private async getGithubRepoContext(
     githubUrl: string
   ): Promise<{ text: string; tokenCount: number }> {
@@ -269,6 +281,17 @@ Focus on:
   async *execute(query: string, options?: DocCommandOptions): CommandGenerator {
     try {
       console.error('Generating repository documentation...\n');
+
+      // Handle query as GitHub repo if it looks like one and --from-github is not set
+      if (query && !options?.fromGithub && this.looksLikeGithubRepo(query)) {
+        options = { ...options, fromGithub: query };
+      } else if (query) {
+        // Use query as hint if it's not a repo reference
+        options = {
+          ...options,
+          hint: options?.hint ? `${options.hint}\n\n${query}` : query
+        };
+      }
 
       let repoContext: { text: string; tokenCount: number };
 
