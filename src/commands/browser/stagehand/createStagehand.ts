@@ -12,6 +12,8 @@ import { setupVideoRecording } from '../utilsShared';
 import { Page, BrowserContext } from 'playwright';
 import { CommandGenerator } from '../../../types';
 import { StagehandError, InitializationError, NavigationError } from './errors';
+import { GroqClient } from './GroqClient';
+import type { LogLine, AvailableModel as StagehandAvailableModel } from '@browserbasehq/stagehand';
 
 export interface StagehandInstance {
   stagehand: Stagehand;
@@ -39,23 +41,47 @@ export async function createStagehand(
     const stagehandConfig = loadStagehandConfig(config);
     validateStagehandConfig(stagehandConfig);
 
+    // Create a strongly typed logger function
+    const logger = (message: LogLine): void => {
+      const loggerFn = stagehandLogger(options?.debug ?? stagehandConfig.verbose);
+      if (loggerFn) {
+        void loggerFn(message);
+      }
+    };
+
     const stagehandOptions: ConstructorParams = {
       env: 'LOCAL',
       headless: options?.headless ?? stagehandConfig.headless,
       verbose: options?.debug || stagehandConfig.verbose ? 1 : 0,
       debugDom: options?.debug ?? stagehandConfig.debugDom,
-      modelName: getStagehandModel(stagehandConfig, { model: options?.model }),
-      apiKey: getStagehandApiKey(stagehandConfig),
       enableCaching: stagehandConfig.enableCaching,
-      logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
+      logger,
     };
 
-    // Set default values for network and console options
-    options = {
-      ...options,
-      network: options?.network === undefined ? true : options.network,
-      console: options?.console === undefined ? true : options.console,
-    };
+    // Only set modelName for non-Groq providers
+    if (stagehandConfig.provider !== 'groq') {
+      const model = getStagehandModel(stagehandConfig, { model: options?.model });
+      if (model) {
+        stagehandOptions.modelName = model as StagehandAvailableModel;
+      }
+    }
+
+    // Set up Groq client if using Groq provider
+    if (stagehandConfig.provider === 'groq') {
+      const modelName = getStagehandModel(stagehandConfig, { model: options?.model });
+      if (!modelName) {
+        throw new Error('A model name must be specified when using Groq provider');
+      }
+
+      stagehandOptions.llmClient = new GroqClient({
+        logger,
+        enableCaching: stagehandConfig.enableCaching,
+        modelName: modelName as StagehandAvailableModel,
+        clientOptions: {
+          apiKey: getStagehandApiKey(stagehandConfig),
+        },
+      });
+    }
 
     console.log('using stagehand options', { ...stagehandOptions, apiKey: 'REDACTED' });
     const stagehand = new Stagehand(stagehandOptions);
