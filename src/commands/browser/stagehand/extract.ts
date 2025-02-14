@@ -1,11 +1,9 @@
 import type { Command, CommandGenerator } from '../../../types';
 import {
   createStagehand,
-  formatOutput,
-  handleBrowserError,
   navigateToUrl,
   DEFAULT_TIMEOUTS,
-} from './utils';
+} from './createStagehand';
 import { ExtractionSchemaError } from './errors';
 import { Stagehand } from '@browserbasehq/stagehand';
 import type { SharedBrowserCommandOptions } from '../browserOptions';
@@ -15,6 +13,7 @@ import {
   captureScreenshot,
   outputMessages,
 } from '../utilsShared';
+import { formatOutput, handleBrowserError } from './stagehandUtils';
 
 export class ExtractCommand implements Command {
   async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {

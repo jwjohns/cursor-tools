@@ -1,11 +1,9 @@
 import type { Command, CommandGenerator } from '../../../types';
 import {
   createStagehand,
-  formatOutput,
-  handleBrowserError,
   navigateToUrl,
   DEFAULT_TIMEOUTS,
-} from './utils';
+} from './createStagehand';
 import { ObservationError } from './errors';
 import { Stagehand, ObserveResult } from '@browserbasehq/stagehand';
 import type { SharedBrowserCommandOptions } from '../browserOptions';
@@ -15,6 +13,7 @@ import {
   captureScreenshot,
   outputMessages,
 } from '../utilsShared';
+import { formatOutput, handleBrowserError } from './stagehandUtils';
 
 interface ObservationResult {
   elements: Array<{
@@ -54,12 +53,7 @@ export class ObserveCommand implements Command {
         await page.evaluate(options.evaluate);
       }
 
-      const result = await this.performObservation(
-        stagehand,
-        query,
-        options?.timeout,
-        options
-      );
+      const result = await this.performObservation(stagehand, query, options?.timeout, options);
 
       await captureScreenshot(page, options || {});
 

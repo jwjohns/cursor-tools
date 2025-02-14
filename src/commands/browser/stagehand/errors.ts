@@ -9,13 +9,19 @@ export class StagehandError extends Error {
 }
 
 export class InitializationError extends StagehandError {
-  constructor(message: string, public originalError?: unknown) {
+  constructor(
+    message: string,
+    public originalError?: unknown
+  ) {
     super(message, originalError);
   }
 }
 
 export class NavigationError extends StagehandError {
-  constructor(message: string, public originalError?: unknown) {
+  constructor(
+    message: string,
+    public originalError?: unknown
+  ) {
     super(message, originalError);
   }
 }
@@ -36,4 +42,4 @@ export class ExtractionSchemaError extends StagehandError {
   constructor(message: string, details?: unknown) {
     super(message, details);
   }
-} 
+}

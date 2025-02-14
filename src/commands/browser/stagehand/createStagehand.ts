@@ -114,10 +114,7 @@ export async function navigateToUrl(
       await Promise.race([reloadPromise, reloadTimeoutPromise]);
       return;
     } catch (error) {
-      throw new NavigationError(
-        'Failed to reload current page.',
-        error
-      );
+      throw new NavigationError('Failed to reload current page.', error);
     }
   }
 
@@ -140,44 +137,3 @@ export async function navigateToUrl(
     );
   }
 }
-
-export async function* handleBrowserError(err: unknown, debug = false): CommandGenerator {
-  const error = err as Error | StagehandError;
-  let message: string;
-  let details: unknown;
-  let errorType = 'Unknown Error';
-
-  if (error instanceof StagehandError) {
-    message = error.message;
-    details = error.details;
-    errorType = error.name;
-  } else if (error instanceof Error) {
-    message = error.message;
-    details = error.stack;
-    errorType = error.name;
-  } else {
-    message = 'An unknown error occurred';
-    details = String(error);
-  }
-
-  const output = [`${errorType}: ${message}`];
-
-  if (debug && details) {
-    output.push('', '--- Debug Information ---');
-    if (typeof details === 'string') {
-      output.push(details);
-    } else {
-      output.push(JSON.stringify(details, null, 2));
-    }
-    output.push('--- End Debug Information ---\n');
-  }
-
-  yield output.join('\n');
-}
-
-export function formatOutput(result: unknown, debug?: boolean): string {
-  if (debug) {
-    return typeof result === 'string' ? result : JSON.stringify(result, null, 2);
-  }
-  return typeof result === 'string' ? result : JSON.stringify(result);
-} 

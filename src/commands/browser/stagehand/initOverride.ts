@@ -155,7 +155,6 @@ export async function getBrowser(
         });
         await Promise.all(pages.map((page) => page.evaluate(scriptContent())));
       }
-
     } else {
       context = await chromium.launchPersistentContext(path.join(tmpDir, 'userdir'), {
         recordVideo: options.recordVideo,

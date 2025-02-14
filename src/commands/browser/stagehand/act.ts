@@ -1,11 +1,5 @@
 import type { Command, CommandGenerator } from '../../../types';
-import {
-  createStagehand,
-  formatOutput,
-  handleBrowserError,
-  navigateToUrl,
-  DEFAULT_TIMEOUTS,
-} from './utils';
+import { createStagehand, navigateToUrl, DEFAULT_TIMEOUTS } from './createStagehand';
 import { ActionError } from './errors';
 import { Stagehand } from '@browserbasehq/stagehand';
 import type { SharedBrowserCommandOptions } from '../browserOptions';
@@ -15,6 +9,7 @@ import {
   captureScreenshot,
   outputMessages,
 } from '../utilsShared';
+import { formatOutput, handleBrowserError } from './stagehandUtils';
 
 export class ActCommand implements Command {
   async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
@@ -112,9 +107,12 @@ export class ActCommand implements Command {
       for (const instruct of instruction.split('|')) {
         let stepTimeout: ReturnType<typeof setTimeout> | undefined;
         const stepTimeoutPromise = new Promise((_, reject) => {
-          stepTimeout = setTimeout(() => reject(new Error('step timeout')), DEFAULT_TIMEOUTS.ACTION_STEP);
+          stepTimeout = setTimeout(
+            () => reject(new Error('step timeout')),
+            DEFAULT_TIMEOUTS.ACTION_STEP
+          );
         });
-        
+
         // Execute the action and wait for it to complete
         await Promise.race([stagehand.page.act(instruct), totalTimeoutPromise, stepTimeoutPromise]);
         if (stepTimeout !== undefined) {
@@ -124,7 +122,9 @@ export class ActCommand implements Command {
         // Wait for the DOM to be ready after the action
         await Promise.race([
           stagehand.page.waitForLoadState('domcontentloaded'),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('DOM load timeout')), DEFAULT_TIMEOUTS.ACTION_STEP)),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('DOM load timeout')), DEFAULT_TIMEOUTS.ACTION_STEP)
+          ),
         ]);
 
         console.log('step done', instruct);
