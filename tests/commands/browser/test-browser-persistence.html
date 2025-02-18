@@ -1,55 +1,357 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Browser Command Test Page</title>
+    <title>Stagehand Test Page</title>
     <style>
-        body { 
+        @keyframes gradient {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        @keyframes noise {
+            0% { transform: translate(0,0) }
+            20% { transform: translate(-2%,-2%) }
+            40% { transform: translate(2%,2%) }
+            60% { transform: translate(-2%,-1%) }
+            80% { transform: translate(1%,2%) }
+            100% { transform: translate(0,0) }
+        }
+
+        body {
             font-family: Arial, sans-serif;
+            margin: 0;
+            min-height: 100vh;
+            max-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+            background-size: 400% 400%;
+            animation: gradient 60s ease infinite;
+            position: relative;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            right: -50%;
+            bottom: -50%;
+            width: 200%;
+            height: 200%;
+            background: transparent url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0" numOctaves="300" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%" height="100%" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+            opacity: 0.1;
+            animation: noise 60s infinite;
+            pointer-events: none;
+        }
+
+        /* Glassmorphism Container */
+        .container {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
             max-width: 800px;
-            margin: 40px auto;
-            padding: 20px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            z-index: 1;
         }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Neumorphic Input Fields */
+        #name-input, #forms {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="text"],
         button {
-            padding: 10px 20px;
-            margin: 10px;
+            padding: 10px 15px;
+            margin: 5px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            background: rgba(255, 255, 255, 0.2);
+            box-shadow:
+                5px 5px 10px rgba(0, 0, 0, 0.2),
+                -5px -5px 10px rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            outline: none;
+            color: white;
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+       
+        button {
+            margin-right: 10px;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+        }
+
+        input[type="text"]:focus {
+            box-shadow:
+                3px 3px 6px rgba(0, 0, 0, 0.3),
+                -3px -3px 6px rgba(255, 255, 255, 0.1),
+                inset 2px 2px 5px rgba(0, 0, 0, 0.2),
+                inset -2px -2px 5px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.25);
+        }
+    
+        /* Neumorphic Buttons - Hover & Active States */
+        button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            box-shadow:
+                3px 3px 6px rgba(0, 0, 0, 0.2),
+                -3px -3px 6px rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+
+        button:active,
+        button.active {
+            box-shadow:
+                inset 3px 3px 6px rgba(0, 0, 0, 0.3),
+                inset -3px -3px 6px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(1px);
+        }
+
+        #output {
+            margin-top: 20px;
+            font-size: 18px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow:
+                inset 3px 3px 6px rgba(0, 0, 0, 0.2),
+                inset -3px -3px 6px rgba(255, 255, 255, 0.1);
+            opacity: 0;
+            transition: all 0.5s ease;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        #output.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        #buttons {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"] {
+            width: calc(100% - 30px);
+            max-width: 300px;
+        }
+
+        /* Name input specific styles */
+        #nameInput {
+            font-size: 36px;
+            padding: 15px 20px;
+        }
+
+        /* Stopwatch Styles */
+        #stopwatch-container {
+            margin: 20px 0;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 8px;
+            box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.2),
+                       inset -3px -3px 6px rgba(255, 255, 255, 0.1);
+        }
+
+        #stopwatch-display {
+            font-size: 2.5em;
+            font-family: monospace;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        #stopwatch-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        /* Stopwatch Button Styles */
+        #stopwatch-controls button {
             font-size: 16px;
         }
-        input {
-            padding: 8px;
-            margin: 10px;
-            font-size: 16px;
+
+        #startStopBtn {
+            min-width: 100px;
+            text-align: center;
+        }
+
+        #startStopBtn.running {
+            box-shadow:
+                inset 3px 3px 6px rgba(0, 0, 0, 0.3),
+                inset -3px -3px 6px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(1px);
+        }
+
+        #startStopBtn.running:hover {
+            box-shadow:
+                inset 3px 3px 6px rgba(0, 0, 0, 0.3),
+                inset -3px -3px 6px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(1px);
+        }
+
+        #resetBtn {
+            background: rgba(255, 255, 255, 0.1);
+            box-shadow:
+                3px 3px 6px rgba(0, 0, 0, 0.1),
+                -3px -3px 6px rgba(255, 255, 255, 0.05);
+            font-size: 14px;
+        }
+
+        #resetBtn:active {
+            box-shadow:
+                inset 2px 2px 4px rgba(0, 0, 0, 0.3),
+                inset -2px -2px 4px rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(1px);
         }
     </style>
 </head>
 <body>
-    <h1>Test Page for Browser Commands</h1>
-    
-    <div id="buttons">
-        <button id="btn1">Button 1</button>
-        <button id="btn2">Button 2</button>
-        <button id="btn3">Button 3</button>
-    </div>
+    <div class="container">
+        <h1>Test Page for Stagehand</h1>
+        
+        <div id="name-input">
+            <!-- 
+              The name input field has a deliberately large font size (36px)
+              to ensure it's clearly readable in screenshots shared on social media.
+              This is an intentional design choice for demonstration purposes.
+            -->
+            <label for="nameInput">Name:</label>
+            <input type="text" id="nameInput" placeholder="Enter your name">
+        </div>
 
-    <div id="forms">
-        <input type="text" id="textInput" placeholder="Type something here">
-        <button onclick="showInput()">Show Input</button>
-    </div>
+        <!-- Add Stopwatch Section -->
+        <div id="stopwatch-container">
+            <div id="stopwatch-display">00:00</div>
+            <div id="stopwatch-controls">
+                <button id="startStopBtn">Start</button>
+                <button id="resetBtn">Reset</button>
+            </div>
+        </div>
 
-    <div id="output"></div>
+        <div id="buttons">
+            <button id="btn1">Button 1</button>
+            <button id="btn2">Button 2</button>
+            <button id="btn3">Button 3</button>
+        </div>
+
+        <div id="forms">
+            <label for="textInput">Message:</label>
+            <input type="text" id=" " placeholder="Type something here">
+        </div>
+
+        <div id="output"></div>
+    </div>
 
     <script>
-        function showInput() {
-            const input = document.getElementById('textInput').value;
-            document.getElementById('output').textContent = 'You typed: ' + input;
-        }
-
         // Add click handlers to all buttons to show they were clicked
         document.querySelectorAll('button').forEach(button => {
-            button.addEventListener('click', () => {
-                console.log(`${button.textContent} was clicked!`);
-                document.getElementById('output').textContent = `${button.textContent} was clicked!`;
-            });
+            if(!button.getAttribute('onclick')) {
+                button.addEventListener('click', () => {
+                    // Toggle active state for clicked button
+                    button.classList.toggle('active');
+
+                    console.log(`${button.textContent} was clicked!`);
+                    const output = document.getElementById('output');
+                    output.textContent = `${button.textContent} was clicked!`;
+                    output.classList.remove('show');
+                    // Force a reflow
+                    void output.offsetWidth;
+                    output.classList.add('show');
+                });
+            }
         });
+
+        // Stopwatch functionality
+        let stopwatchInterval;
+        let seconds = 0;
+        let isRunning = false;
+        let wasStopped = false;
+
+        const startStopBtn = document.getElementById('startStopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const display = document.getElementById('stopwatch-display');
+
+        function updateDisplay() {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            display.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function toggleStopwatch() {
+            if (!isRunning) {
+                // Starting or resuming
+                isRunning = true;
+                startStopBtn.textContent = 'Stop';
+                startStopBtn.classList.add('active');
+                startStopBtn.classList.add('running');
+                stopwatchInterval = setInterval(() => {
+                    seconds++;
+                    updateDisplay();
+                }, 1000);
+            } else {
+                // Stopping
+                isRunning = false;
+                wasStopped = true;
+                startStopBtn.textContent = 'Resume';
+                startStopBtn.classList.remove('active');
+                startStopBtn.classList.remove('running');
+                clearInterval(stopwatchInterval);
+            }
+        }
+
+        function resetStopwatch() {
+            clearInterval(stopwatchInterval);
+            isRunning = false;
+            wasStopped = false;
+            seconds = 0;
+            updateDisplay();
+            startStopBtn.textContent = 'Start';
+            startStopBtn.classList.remove('active');
+            startStopBtn.classList.remove('running');
+        }
+
+        startStopBtn.addEventListener('click', toggleStopwatch);
+        resetBtn.addEventListener('click', resetStopwatch);
+
+        // Initialize display
+        updateDisplay();
     </script>
 </body>
 </html> 

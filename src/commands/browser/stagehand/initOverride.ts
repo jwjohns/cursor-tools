@@ -88,6 +88,13 @@ export async function getBrowser(
   },
   logger: (message: LogLine) => void
 ): Promise<BrowserResult> {
+  console.log('getBrowser', {
+    apiKey,
+    projectId,
+    env,
+    options,
+    logger,
+  });
   try {
     logger({
       category: 'init',
@@ -253,7 +260,7 @@ async function applyStealthScripts(context: BrowserContext) {
 const oldInit = Stagehand.prototype.init;
 
 // --- FIX FOR STAGEHAND ---
-export const patchStagehand = once(async () => {
+const patchStagehand = once(async () => {
   const tempStagehand = new Stagehand({
     env: 'LOCAL',
     apiKey: 'test',
@@ -270,7 +277,8 @@ export const patchStagehand = once(async () => {
   return { StagehandPage, StagehandContext };
 });
 
-export function overrideStagehandInit() {
+function _overrideStagehandInit() {
+  console.log('overriding stagehand init');
   //@ts-ignore
   Stagehand.prototype.init = async function myinit(
     initOptions:
@@ -286,7 +294,7 @@ export function overrideStagehandInit() {
     const viewportSize = initOptions?.connectTo
       ? undefined
       : { width: viewport?.[0] ?? 1280, height: viewport?.[1] ?? 720 };
-
+    console.log('initOptions', initOptions);
     const browserResult = await getBrowser(
       this['apiKey'],
       this['projectId'],
@@ -352,3 +360,5 @@ export function overrideStagehandInit() {
     };
   };
 }
+
+export const overrideStagehandInit = once(_overrideStagehandInit);

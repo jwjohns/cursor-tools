@@ -7,10 +7,9 @@ import {
   getStagehandApiKey,
   getStagehandModel,
 } from './config';
-import { stagehandLogger } from './initOverride';
+import { overrideStagehandInit, stagehandLogger } from './initOverride';
 import { setupVideoRecording } from '../utilsShared';
 import { Page, BrowserContext } from 'playwright';
-import { CommandGenerator } from '../../../types';
 import { StagehandError, InitializationError, NavigationError } from './errors';
 import { GroqClient } from './GroqClient';
 import type { LogLine, AvailableModel as StagehandAvailableModel } from '@browserbasehq/stagehand';
@@ -26,8 +25,8 @@ export interface StagehandInstance {
 export const DEFAULT_TIMEOUTS = {
   INIT: 30000, // 30 seconds for initialization
   NAVIGATION: 30000, // 30 seconds for navigation
-  ACTION: 60000, // 60 seconds for actions
-  ACTION_STEP: 30000, // 30 seconds for individual action steps
+  ACTION: 120000, // 120 seconds for actions
+  ACTION_STEP: 120000, // 120 seconds for individual action steps
   EXTRACTION: 60000, // 60 seconds for data extraction
   OBSERVATION: 30000, // 30 seconds for observation
   CLEANUP: 5000, // 5 seconds for cleanup
@@ -37,6 +36,7 @@ export async function createStagehand(
   options: SharedBrowserCommandOptions
 ): Promise<StagehandInstance> {
   try {
+    const overridePromise = overrideStagehandInit();
     const config = loadConfig();
     const stagehandConfig = loadStagehandConfig(config);
     validateStagehandConfig(stagehandConfig);
@@ -58,32 +58,31 @@ export async function createStagehand(
       logger,
     };
 
-    // Only set modelName for non-Groq providers
-    if (stagehandConfig.provider !== 'groq') {
-      const model = getStagehandModel(stagehandConfig, { model: options?.model });
-      if (model) {
-        stagehandOptions.modelName = model as StagehandAvailableModel;
-      }
+    const { model, provider } = getStagehandModel(stagehandConfig, { model: options?.model });
+    console.log('model', { model, provider });
+    // Set up LLMProvider for non-Groq providers
+    if (provider !== 'groq' && model) {
+      stagehandOptions.modelName = model as StagehandAvailableModel;
+      stagehandOptions.apiKey = getStagehandApiKey(stagehandConfig);
     }
 
     // Set up Groq client if using Groq provider
-    if (stagehandConfig.provider === 'groq') {
-      const modelName = getStagehandModel(stagehandConfig, { model: options?.model });
-      if (!modelName) {
+    if (provider === 'groq') {
+      if (!model) {
         throw new Error('A model name must be specified when using Groq provider');
       }
-
       stagehandOptions.llmClient = new GroqClient({
         logger,
         enableCaching: stagehandConfig.enableCaching,
-        modelName: modelName as StagehandAvailableModel,
+        modelName: model as StagehandAvailableModel,
         clientOptions: {
-          apiKey: getStagehandApiKey(stagehandConfig),
+          apiKey: getStagehandApiKey({ ...stagehandConfig, provider }),
         },
       });
     }
 
     console.log('using stagehand options', { ...stagehandOptions, apiKey: 'REDACTED' });
+    await overridePromise;
     const stagehand = new Stagehand(stagehandOptions);
 
     // Initialize with timeout

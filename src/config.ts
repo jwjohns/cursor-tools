@@ -50,7 +50,7 @@ export const defaultConfig: Config = {
     timeout: 120000, // 120 seconds - stagehand needs a lot of time to go back and forward to LLMs
   },
   stagehand: {
-    provider: 'openai', // Keep OpenAI as default
+    provider: 'anthropic', // Make anthropic the default provider
     verbose: false,
     debugDom: false,
     enableCaching: true,

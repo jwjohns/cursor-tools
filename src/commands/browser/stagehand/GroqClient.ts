@@ -449,21 +449,30 @@ ${userProvidedInstructions}`;
       }
 
       try {
+        // console.log('sending messages to groq', {
+        //   messagesFiltered,
+        //   temperature: options.temperature,
+        //   top_p: options.top_p,
+        //   frequency_penalty: options.frequency_penalty,
+        //   presence_penalty: options.presence_penalty,
+        // });
         const completion = await this.client.chat.completions.create({
           model: this.modelName,
           messages: messagesFiltered,
           temperature: options.temperature === 0 ? MIN_TEMPERATURE : options.temperature,
-          top_p: options.top_p,
-          frequency_penalty: options.frequency_penalty,
-          presence_penalty: options.presence_penalty,
+          top_p: options.top_p ?? 1,
+          frequency_penalty: options.frequency_penalty || 1,
+          presence_penalty: options.presence_penalty || 1,
           max_tokens: options.maxTokens,
           ...(this.modelName.includes('r1') ? { reasoning_format: 'hidden' } : {}), // TODO might be worth switching to "parsed" for transparency see https://console.groq.com/docs/reasoning
           n: 1, // Groq only supports n=1
           tools,
           tool_choice: options.response_model
-            ? 'required'
+            ? 'auto'
             : (options.tool_choice as 'none' | 'auto' | 'required' | undefined),
         });
+
+        console.log('grow completion', JSON.stringify(completion, null, 2));
 
         // Transform to LLMResponse format
         const response: LLMResponse = {

@@ -94,7 +94,7 @@ export class ActCommand implements Command {
       // Get the current URL before the action
       const startUrl = await stagehand.page.url();
       let totalTimeout: ReturnType<typeof setTimeout> | undefined;
-      const totalTimeoutPromise = new Promise(
+      const totalTimeoutPromise = new Promise<void>(
         (_, reject) =>
           (totalTimeout = setTimeout(() => reject(new Error('Action timeout')), timeout))
       );
@@ -103,10 +103,14 @@ export class ActCommand implements Command {
         await Promise.race([stagehand.page.evaluate(evaluate), totalTimeoutPromise]);
       }
 
+      let resultMessages: Array<string> = [];
       // Perform action with timeout
+      const initialDomSettleTimeout = 30000;
+      let stepNumber = 0;
       for (const instruct of instruction.split('|')) {
+        stepNumber++;
         let stepTimeout: ReturnType<typeof setTimeout> | undefined;
-        const stepTimeoutPromise = new Promise((_, reject) => {
+        const stepTimeoutPromise = new Promise<void>((_, reject) => {
           stepTimeout = setTimeout(
             () => reject(new Error('step timeout')),
             DEFAULT_TIMEOUTS.ACTION_STEP
@@ -114,10 +118,29 @@ export class ActCommand implements Command {
         });
 
         // Execute the action and wait for it to complete
-        await Promise.race([stagehand.page.act(instruct), totalTimeoutPromise, stepTimeoutPromise]);
+        const result = await Promise.race([stagehand.page.act({
+          action: instruct,
+          domSettleTimeoutMs: stepNumber === 1 ? initialDomSettleTimeout : 100
+        }), totalTimeoutPromise, stepTimeoutPromise]);
         if (stepTimeout !== undefined) {
           clearTimeout(stepTimeout);
         }
+        if (!result) {
+          throw new ActionError(`Action timeout Failed to perform action: ${instruction}`, {
+            instruction,
+            error: new Error('Action timeout'),
+            startUrl: await stagehand.page.url(),
+          });
+        }
+        if (result.success === false) {
+          console.log('result situation', result);
+          throw new ActionError(`${result.message} Failed to perform action: ${result.action} for instruction ${instruction}`, {
+            instruction,
+            error: new Error(result.message),
+            startUrl: await stagehand.page.url(),
+          });
+        }
+        resultMessages.push(result.message);
 
         // Wait for the DOM to be ready after the action
         await Promise.race([
@@ -130,8 +153,8 @@ export class ActCommand implements Command {
         console.log('step done', instruct);
       }
 
-      // Wait for potential navigation or dynamic content to settle
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Wait for potential navigation
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
       // Get the current URL after the action
       const endUrl = await stagehand.page.url();
@@ -144,7 +167,7 @@ export class ActCommand implements Command {
       if (endUrl !== startUrl) {
         return {
           success: true,
-          message: `Successfully performed action: ${instruction} (final url ${endUrl})`,
+          message: `Successfully performed action: ${instruction} (final url ${endUrl})\n${resultMessages.join('\n')}`,
           startUrl,
           endUrl,
           instruction,
@@ -153,7 +176,7 @@ export class ActCommand implements Command {
 
       return {
         success: true,
-        message: `Successfully performed action: ${instruction}`,
+        message: `Successfully performed action: ${instruction}\n${resultMessages.join('\n')}`,
         startUrl,
         endUrl,
         instruction,

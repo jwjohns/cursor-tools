@@ -119,9 +119,12 @@ export function validateStagehandConfig(config: StagehandConfig): void {
     throw new Error('Invalid Stagehand provider. Must be either "anthropic", "openai", or "groq".');
   }
 
+  // Get the effective provider based on model if specified
+  const { provider } = getStagehandModel(config, { model: config.model });
+
   // Check for required API key based on provider
   let requiredKey: string;
-  switch (config.provider) {
+  switch (provider) {
     case 'anthropic':
       requiredKey = 'ANTHROPIC_API_KEY';
       break;
@@ -135,7 +138,7 @@ export function validateStagehandConfig(config: StagehandConfig): void {
 
   if (!process.env[requiredKey]) {
     throw new Error(
-      `${requiredKey} is required for Stagehand ${config.provider} provider. ` +
+      `${requiredKey} is required for Stagehand ${provider} provider. ` +
         `Please set it in your .cursor-tools.env file.`
     );
   }
@@ -166,53 +169,48 @@ export function getStagehandApiKey(config: StagehandConfig): string {
   return apiKey;
 }
 
-/**
- * Get the Stagehand model to use based on the following precedence:
- * 1. Command line option (--model)
- * 2. Configuration file (cursor-tools.config.json)
- * 3. Default model based on provider (claude-3-5-sonnet-latest for Anthropic, o3-mini for OpenAI)
- *
- * For Groq, there is no default model - it must be specified via command line or config.
- * For other providers, if both command line and config models are invalid, falls back to the default model.
- *
- * @param config The Stagehand configuration
- * @param options Optional command line options
- * @returns The model to use, or undefined for Groq if no model specified
- */
+function getProviderFromModel(modelName: string): 'anthropic' | 'openai' | 'groq' {
+  if (modelName.startsWith('claude')) {
+    return 'anthropic';
+  } else if (modelName.startsWith('gpt') || modelName.startsWith('o3')) {
+    return 'openai';
+  } else {
+    // Assume Groq if it does not start with claude, gpt or o3
+    return 'groq';
+  }
+}
+
 export function getStagehandModel(
   config: StagehandConfig,
   options?: { model?: string }
-): AvailableModel | undefined {
-  // If a model is specified (via command line or config), validate and use it
+): { model: AvailableModel | undefined; provider: 'anthropic' | 'openai' | 'groq' } {
   const modelToUse = options?.model ?? config.model;
-
-  // For Groq, just return the model name without validation
-  if (config.provider === 'groq') {
-    return modelToUse as AvailableModel;
-  }
 
   if (modelToUse) {
     const parseAttempt = availableModels.safeParse(modelToUse);
     if (parseAttempt.success) {
-      return parseAttempt.data;
+      // Valid model, use it
+      const provider = getProviderFromModel(parseAttempt.data);
+      return { model: parseAttempt.data, provider };
     }
+    // If model to use is invalid but there's a provider, log and use default for provider
     console.warn(
       `Warning: Using unfamiliar model "${modelToUse}" this may be a mistake. ` +
         `Typical models are "claude-3-5-sonnet-latest" for Anthropic and "o3-mini" or "gpt-4o" for OpenAI.`
     );
-    return modelToUse as AvailableModel;
+    return { model: modelToUse as AvailableModel, provider: getProviderFromModel(modelToUse) };
   }
 
   // Otherwise use defaults based on provider
   switch (config.provider as 'anthropic' | 'openai' | 'groq') {
     case 'anthropic': {
-      return 'claude-3-5-sonnet-latest';
+      return { model: 'claude-3-5-sonnet-latest', provider: 'anthropic' };
     }
     case 'openai': {
-      return 'o3-mini';
+      return { model: 'o3-mini', provider: 'openai' };
     }
     case 'groq': {
-      return undefined; // No default model for Groq
+      return { model: undefined, provider: 'groq' }; // No default model for Groq
     }
   }
 }
