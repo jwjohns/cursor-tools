@@ -210,7 +210,7 @@ export function getStagehandModel(
       return { model: 'o3-mini', provider: 'openai' };
     }
     case 'groq': {
-      return { model: undefined, provider: 'groq' }; // No default model for Groq
+      return { model: 'deepseek-r1-distill-llama-70b', provider: 'groq' }; // No default model for Groq
     }
   }
 }

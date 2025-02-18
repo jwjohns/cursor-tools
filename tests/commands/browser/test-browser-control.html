@@ -1,7 +1,7 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Stagehand Test Page</title>
+    <title>Stagehand</title>
     <style>
         @keyframes gradient {
             0% { background-position: 0% 50%; }
@@ -67,15 +67,12 @@
             margin: 0;
             padding: 0;
             text-align: center;
-        }
-
-        /* Premium Dark Classic */
-        .premium-dark-classic {
             background: linear-gradient(180deg, rgba(228, 198, 247, 0.91) 30%, rgba(134, 223, 255, 0.95) 100%);
             background-clip: text;
             -webkit-background-clip: text;
             color: rgba(255,255,255,0.35);
             text-shadow: 0px -1px 0px rgba(44, 44, 144, 0.25);
+            filter: drop-shadow(0 0 2px rgba(108, 10, 108, 0.2));
         }
 
         /* Neumorphic Input Fields */
@@ -274,45 +271,50 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="premium-titles">
+    <main class="container">
+        <header class="premium-titles">
             <div class="title-block">
-                <h1 class="premium-text premium-dark-classic">Stagehand</h1>
+                <h1 
+                    class="premium-text" 
+                    aria-label="Stagehand Test Page"
+                >
+                    Stagehand Test Page
+                </h1>
             </div>
-        </div>
+        </header>
 
-        <div id="name-input">
-            <!-- 
-              The name input field has a deliberately large font size (36px)
-              to ensure it's clearly readable in screenshots shared on social media.
-              This is an intentional design choice for demonstration purposes.
-            -->
-            <label for="nameInput">Name:</label>
-            <input type="text" id="nameInput" placeholder="Enter your name">
-        </div>
+        <section id="name-input">
+            <div style="
+                margin: 20px 0;
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.15);
+                border-radius: 8px;
+                box-shadow: inset 3px 3px 6px rgba(0, 0, 0, 0.2),
+                           inset -3px -3px 6px rgba(255, 255, 255, 0.1);">
+                <input type="text" id="nameInput" placeholder="Enter your name" style="width: calc(100% - 40px); max-width: none;">
+            </div>
+        </section>
 
-        <!-- Add Stopwatch Section -->
-        <div id="stopwatch-container">
-            <div id="stopwatch-display">00:00</div>
+        <section id="stopwatch-container" aria-labelledby="stopwatchDisplay">
+            <div id="stopwatch-display" role="timer" aria-live="polite">00:00</div>
             <div id="stopwatch-controls">
-                <button id="startStopBtn">Start</button>
+                <button id="startStopBtn" aria-pressed="false">Start</button>
                 <button id="resetBtn">Reset</button>
             </div>
-        </div>
+        </section>
 
-        <div id="buttons">
+        <section id="buttons" role="group" aria-label="Action Buttons">
             <button id="btn1">Button 1</button>
             <button id="btn2">Button 2</button>
             <button id="btn3">Button 3</button>
-        </div>
+        </section>
 
-        <div id="forms">
-            <label for="messageInput">Message:</label>
+        <section id="forms">
             <input type="text" id="messageInput" placeholder="Type something here">
-        </div>
+        </section>
 
-        <div id="output"></div>
-    </div>
+        <div id="output" role="status" aria-live="polite"></div>
+    </main>
 
     <script>
         // Add click handlers to all buttons to show they were clicked
@@ -389,4 +391,4 @@
         updateDisplay();
     </script>
 </body>
-</html> 
+</html>

@@ -10,7 +10,7 @@ import {
 import { overrideStagehandInit, stagehandLogger } from './initOverride';
 import { setupVideoRecording } from '../utilsShared';
 import { Page, BrowserContext } from 'playwright';
-import { StagehandError, InitializationError, NavigationError } from './errors';
+import { InitializationError, NavigationError } from './errors';
 import { GroqClient } from './GroqClient';
 import type { LogLine, AvailableModel as StagehandAvailableModel } from '@browserbasehq/stagehand';
 
@@ -72,7 +72,6 @@ export async function createStagehand(
         throw new Error('A model name must be specified when using Groq provider');
       }
       stagehandOptions.llmClient = new GroqClient({
-        logger,
         enableCaching: stagehandConfig.enableCaching,
         modelName: model as StagehandAvailableModel,
         clientOptions: {
