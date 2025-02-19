@@ -80,9 +80,9 @@ Here are two examples:
 - The new `.cursor/rules/cursor-tools.mdc` file (recommended)
 - The legacy `.cursorrules` file (for backward compatibility)
 
-You can also control this using the `USE_LEGACY` environment variable:
-- `USE_LEGACY=true` - Use legacy `.cursorrules` file
-- `USE_LEGACY=false` - Use new `.cursor/rules/cursor-tools.mdc` file
+You can also control this using the `USE_LEGACY_CURSORRULES` environment variable:
+- `USE_LEGACY_CURSORRULES=true` - Use legacy `.cursorrules` file
+- `USE_LEGACY_CURSORRULES=false` - Use new `.cursor/rules/cursor-tools.mdc` file
 - If not set, defaults to legacy mode for backward compatibility
 
 `cursor-tools` requires a Perplexity API key and a Google AI API key.

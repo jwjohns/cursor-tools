@@ -12,14 +12,14 @@ All notable changes to this project will be documented in this file.
 - Improved error handling and type safety in cursor rules management
 - Enhanced directory creation order in installation process
 - Added user choice during installation for cursor rules location (legacy `.cursorrules` or new `.cursor/rules/cursor-tools.mdc`)
-- Added `USE_LEGACY` environment variable to control cursor rules file location
+- Added `USE_LEGACY_CURSORRULES` environment variable to control cursor rules file location
 
 ### Added
 - Support for new Cursor IDE project rules structure
   - New installations now use `.cursor/rules/cursor-tools.mdc` by default
-  - Maintain compatibility with legacy `.cursorrules` file via `USE_LEGACY=true`
+  - Maintain compatibility with legacy `.cursorrules` file via `USE_LEGACY_CURSORRULES=true`
   - Interactive choice during installation
-  - When both exist, use path based on `USE_LEGACY` environment variable
+  - When both exist, use path based on `USE_LEGACY_CURSORRULES` environment variable
   - Updated documentation to reflect new path structure
 - Added support for the `gpt-4o` model in browser commands (`act`, `extract`, `observe`)
   - The model can be selected using the `--model=gpt-4o` command-line option

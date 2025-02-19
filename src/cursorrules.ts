@@ -11,7 +11,7 @@ export const CURSOR_RULES_VERSION = packageJson.version; // Using version from p
 
 // Function to determine which cursor rules path to use
 export function getCursorRulesPath(workspacePath: string): { targetPath: string; isLegacy: boolean } {
-  const useLegacy = process.env.USE_LEGACY === 'true' || !process.env.USE_LEGACY;
+  const useLegacy = process.env.USE_LEGACY_CURSORRULES === 'true' || !process.env.USE_LEGACY_CURSORRULES;
   const legacyPath = join(workspacePath, '.cursorrules');
   const newPath = join(workspacePath, '.cursor', 'rules', 'cursor-tools.mdc');
 

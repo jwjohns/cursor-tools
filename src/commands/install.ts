@@ -26,11 +26,11 @@ async function getUserInput(prompt: string): Promise<string> {
 
 // Add this function after the getUserInput function
 async function askForCursorRulesDirectory(): Promise<boolean> {
-  // If USE_LEGACY is explicitly set, respect that setting
-  if (process.env.USE_LEGACY === 'true') {
+  // If USE_LEGACY_CURSORRULES is explicitly set, respect that setting
+  if (process.env.USE_LEGACY_CURSORRULES === 'true') {
     return false;
   }
-  if (process.env.USE_LEGACY === 'false') {
+  if (process.env.USE_LEGACY_CURSORRULES === 'false') {
     return true;
   }
 
@@ -222,7 +222,7 @@ export class InstallCommand implements Command {
       
       // Ask user for directory preference
       const useNewDirectory = await askForCursorRulesDirectory();
-      process.env.USE_LEGACY = (!useNewDirectory).toString();
+      process.env.USE_LEGACY_CURSORRULES = (!useNewDirectory).toString();
       
       const result = checkCursorRules(absolutePath);
 
@@ -237,7 +237,7 @@ export class InstallCommand implements Command {
       if (result.hasLegacyCursorRulesFile) {
         yield '\n🚧 Warning: Using legacy .cursorrules file. This file will be deprecated in a future release.\n' +
           'To migrate to the new format:\n' +
-          '  1) Set USE_LEGACY=false in your environment\n' +
+          '  1) Set USE_LEGACY_CURSORRULES=false in your environment\n' +
           '  2) Run cursor-tools install . again\n' +
           '  3) Delete .cursorrules once you confirm everything works\n\n';
       }
