@@ -198,17 +198,6 @@ export class InstallCommand implements Command {
       yield 'No package.json found - skipping dependency installation\n';
     }
 
-    // 2. Create necessary directories first
-    const rulesDir = join(absolutePath, '.cursor', 'rules');
-    if (!existsSync(rulesDir)) {
-      try {
-        mkdirSync(rulesDir, { recursive: true });
-      } catch (error) {
-        yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
-        return;
-      }
-    }
-
     // 3. Setup API keys
     yield 'Checking API keys setup...\n';
     for await (const message of this.setupApiKeys()) {
@@ -219,9 +208,22 @@ export class InstallCommand implements Command {
     try {
       yield 'Checking cursor rules...\n';
 
-      // Ask user for directory preference
+      // Ask user for directory preference first
       const useNewDirectory = await askForCursorRulesDirectory();
       process.env.USE_LEGACY_CURSORRULES = (!useNewDirectory).toString();
+
+      // Create necessary directories only if using new structure
+      if (useNewDirectory) {
+        const rulesDir = join(absolutePath, '.cursor', 'rules');
+        if (!existsSync(rulesDir)) {
+          try {
+            mkdirSync(rulesDir, { recursive: true });
+          } catch (error) {
+            yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
+            return;
+          }
+        }
+      }
 
       const result = checkCursorRules(absolutePath);
 
@@ -241,37 +243,21 @@ export class InstallCommand implements Command {
           '  3) Remove the <cursor-tools Integration> section from .cursorrules\n\n';
       }
 
-      // Create directories if using new path
-      if (!result.hasLegacyCursorRulesFile) {
-        const rulesDir = join(absolutePath, '.cursor', 'rules');
-        if (!existsSync(rulesDir)) {
-          try {
-            mkdirSync(rulesDir, { recursive: true });
-          } catch (error) {
-            yield `Error creating rules directory: ${error instanceof Error ? error.message : 'Unknown error'}\n`;
-            return;
-          }
-        }
-      }
-
       if (existsSync(result.targetPath)) {
         existingContent = readFileSync(result.targetPath, 'utf-8');
-
-        // Check if cursor-tools section exists and version matches
-        const startTag = '<cursor-tools Integration>';
-        const endTag = '</cursor-tools Integration>';
         const versionMatch = existingContent.match(/<!-- cursor-tools-version: ([\w.-]+) -->/);
         const currentVersion = versionMatch ? versionMatch[1] : '0';
 
-        if (
-          existingContent.includes(startTag) &&
-          existingContent.includes(endTag) &&
-          currentVersion === CURSOR_RULES_VERSION
-        ) {
-          needsUpdate = false;
-          yield 'Cursor rules are up to date.\n';
-        } else {
-          yield `Updating cursor rules from version ${currentVersion} to ${CURSOR_RULES_VERSION}...\n`;
+        if (needsUpdate) {
+          // Ask for confirmation before overwriting
+          yield `\nAbout to update cursor rules file at ${result.targetPath} from version ${currentVersion} to ${CURSOR_RULES_VERSION}.\n`;
+          const answer = await getUserInput('Do you want to continue? (y/N): ');
+          if (answer.toLowerCase() !== 'y' && answer.toLowerCase() !== 'yes') {
+            yield 'Skipping cursor rules update.\n';
+            yield 'Warning: Your cursor rules are outdated. You may be missing new features and instructions.\n';
+            return;
+          }
+          yield `Updating cursor rules...\n`;
         }
       } else {
         yield `Creating new cursor rules file at ${result.targetPath}...\n`;

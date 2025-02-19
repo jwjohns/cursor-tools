@@ -1,9 +1,10 @@
 import { commands } from './commands/index.ts';
-import { writeFileSync, mkdirSync, appendFileSync, readFileSync } from 'node:fs';
+import { writeFileSync, mkdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { checkCursorRules } from './cursorrules.ts';
 import type { CommandOptions, Provider } from './types';
+import { promises as fsPromises } from 'node:fs';
 // Get the directory name of the current module
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -390,7 +391,7 @@ async function main() {
       
       if (options.saveTo) {
         try {
-          appendFileSync(options.saveTo, output);
+          await fsPromises.appendFile(options.saveTo, output);
         } catch (err) {
           console.error(`Error writing to file: ${options.saveTo}`, err);
           // Disable file writing for subsequent outputs

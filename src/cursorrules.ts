@@ -188,7 +188,6 @@ export function checkCursorRules(workspacePath: string): CursorRulesResult {
   const legacyPath = join(workspacePath, '.cursorrules');
   const newPath = join(workspacePath, '.cursor', 'rules', 'cursor-tools.mdc');
 
-  // Check if either file exists
   const legacyExists = existsSync(legacyPath);
   const newExists = existsSync(newPath);
 
@@ -205,16 +204,28 @@ export function checkCursorRules(workspacePath: string): CursorRulesResult {
   }
 
   try {
-    // If both exist, check new path first
+    const useLegacy = process.env.USE_LEGACY_CURSORRULES === 'true' || !process.env.USE_LEGACY_CURSORRULES;
+
+    // If both exist, prioritize based on USE_LEGACY_CURSORRULES
     if (newExists && legacyExists) {
-      const newContent = readFileSync(newPath, 'utf-8');
-      const result = isCursorRulesContentUpToDate(newContent);
-      return {
-        kind: 'success',
-        ...result,
-        targetPath: newPath,
-        hasLegacyCursorRulesFile: true,
-      };
+      if (useLegacy) {
+        readFileSync(legacyPath, 'utf-8'); // Read to check if readable
+        return {
+          kind: 'success',
+          needsUpdate: true, // Always true for legacy
+          targetPath: legacyPath,
+          hasLegacyCursorRulesFile: true,
+        };
+      } else {
+        const newContent = readFileSync(newPath, 'utf-8');
+        const result = isCursorRulesContentUpToDate(newContent);
+        return {
+          kind: 'success',
+          ...result,
+          targetPath: newPath,
+          hasLegacyCursorRulesFile: true,
+        };
+      }
     }
 
     // If only new path exists
