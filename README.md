@@ -76,7 +76,14 @@ Here are two examples:
 
 ## What is cursor-tools
 
-`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` works with with Cursor (and is compatible with other agents), When you run `cursor-tools install` we automatically add a prompt section to your Cursor project rules (`.cursor/rules/cursor-tools.mdc` or legacy `.cursorrules` file) so that it works out of the box with Cursor, there's no need for additional prompts.
+`cursor-tools` provides a CLI that your **AI agent can use** to expand its capabilities. `cursor-tools` works with with Cursor (and is compatible with other agents), When you run `cursor-tools install` we automatically add a prompt section to your Cursor project rules. During installation, you can choose between:
+- The new `.cursor/rules/cursor-tools.mdc` file (recommended)
+- The legacy `.cursorrules` file (for backward compatibility)
+
+You can also control this using the `USE_LEGACY_CURSORRULES` environment variable:
+- `USE_LEGACY_CURSORRULES=true` - Use legacy `.cursorrules` file
+- `USE_LEGACY_CURSORRULES=false` - Use new `.cursor/rules/cursor-tools.mdc` file
+- If not set, defaults to legacy mode for backward compatibility
 
 `cursor-tools` requires a Perplexity API key and a Google AI API key.
 
