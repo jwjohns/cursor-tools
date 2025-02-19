@@ -1,7 +1,7 @@
 import type { Command, CommandGenerator, CommandOptions, Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { FileError, NetworkError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
@@ -11,7 +11,6 @@ import { ignorePatterns, includePatterns } from '../repomix/repomixConfig';
 interface DocCommandOptions extends CommandOptions {
   model?: string;
   maxTokens?: number;
-  output?: string;
   fromGithub?: string;
   hint?: string;
   debug?: boolean;
@@ -288,29 +287,23 @@ Please:
         );
       }
 
-      // Save to file if output option is provided
-      if (options?.output) {
-        try {
-          writeFileSync(options.output, documentation);
-          console.error(`Documentation saved to ${options.output}\n`);
-        } catch (error) {
-          throw new FileError(`Failed to save documentation to ${options.output}`, error);
-        }
-      } else {
-        yield '\n--- Repository Documentation ---\n\n';
-        yield documentation;
-        yield '\n\n--- End of Documentation ---\n';
-      }
+      // Always yield documentation - quiet mode is handled at top level
+      yield '\n--- Repository Documentation ---\n\n';
+      yield documentation;
+      yield '\n\n--- End of Documentation ---\n';
 
       console.error('Documentation generation completed!\n');
     } catch (error) {
+      // console.error errors and then throw
       if (error instanceof Error) {
-        yield `${error.message}\n`;
+        console.error('Error in doc command:', error.message);
         if ('details' in error && options?.debug) {
-          yield `Debug details: ${JSON.stringify(error.details, null, 2)}\n`;
+          console.error(`Debug details: ${JSON.stringify(error.details, null, 2)}\n`);
+          throw error;
         }
       } else {
-        yield 'An unknown error occurred\n';
+        console.error('An unknown error occurred in doc command:', error);
+        throw new Error('An unknown error occurred in doc command');
       }
     }
   }

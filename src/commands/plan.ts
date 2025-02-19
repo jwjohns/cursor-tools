@@ -1,5 +1,4 @@
-import type { Command, CommandGenerator, CommandOptions } from '../types';
-import type { Config } from '../types';
+import type { Command, CommandGenerator, CommandOptions, Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
@@ -7,6 +6,14 @@ import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
 import { FileError, ProviderError } from '../errors';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
+
+// Plan-specific options interface
+interface PlanCommandOptions extends CommandOptions {
+  fileProvider?: 'gemini' | 'openai' | 'openrouter';
+  thinkingProvider?: 'gemini' | 'openai' | 'openrouter';
+  fileModel?: string;
+  thinkingModel?: string;
+}
 
 // Plan-specific provider interface
 export interface PlanModelProvider extends BaseModelProvider {
@@ -36,7 +43,7 @@ export class PlanCommand implements Command {
     this.config = loadConfig();
   }
 
-  async *execute(query: string, options?: CommandOptions): CommandGenerator {
+  async *execute(query: string, options?: PlanCommandOptions): CommandGenerator {
     try {
       const fileProviderName = options?.fileProvider || this.config.plan?.fileProvider || 'gemini';
       const fileProvider = createPlanProvider(fileProviderName);
@@ -194,15 +201,19 @@ export class PlanCommand implements Command {
 
       yield plan;
     } catch (error) {
+      // console.error errors and then throw
       if (error instanceof FileError || error instanceof ProviderError) {
-        yield `${error.name}: ${error.message}\n`;
+        console.error(`Error in plan command: ${error.name}: ${error.message}`);
         if (error.details && options?.debug) {
-          yield `Debug details: ${JSON.stringify(error.details, null, 2)}\n`;
+          console.error(`Debug details: ${JSON.stringify(error.details, null, 2)}`);
         }
+        throw error;
       } else if (error instanceof Error) {
-        yield `Error: ${error.message}\n`;
+        console.error(`Error in plan command: ${error.message}`);
+        throw error;
       } else {
-        yield 'An unknown error occurred\n';
+        console.error('An unknown error occurred in plan command');
+        throw new Error('An unknown error occurred in plan command');
       }
     }
   }

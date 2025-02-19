@@ -406,8 +406,8 @@ With authentication:
 ### Documentation Generation (uses Gemini 2.0)
 Generate comprehensive documentation for your repository or any GitHub repository:
 ```bash
-# Document local repository
-cursor-tools doc --output=docs.md
+# Document local repository and save to file
+cursor-tools doc --save-to=docs.md
 
 # Document remote GitHub repository (both formats supported)
 cursor-tools doc --from-github=username/repo-name@branch
@@ -606,7 +606,8 @@ In general you do not need to use the cli directly, your AI coding agent will ca
 All commands support these general options:
 - `--model`: Specify an alternative model
 - `--max-tokens`: Control response length
-- `--save-to`: Save command output to a file (in *addition* to displaying it, like tee)
+- `--save-to`: Save command output to a file (in addition to displaying it, like tee)
+- `--quiet`: Suppress stdout output (only useful with --save-to)
 - `--help`: View all available options (help has not been implemented for all commands yet)
 
 Documentation command specific options:
@@ -690,14 +691,14 @@ cursor-tools repo "Why might the authentication be failing in the login flow?"
 
 #### Documentation Examples
 ```bash
-# Document specific aspects
-cursor-tools doc --hint="Focus on the API endpoints and their usage"
+# Document specific aspects and save to file without stdout output
+cursor-tools doc --save-to=docs/api.md --quiet --hint="Focus on the API endpoints and their usage"
 
-# Document with custom output
-cursor-tools doc --save-to=docs/architecture.md --hint="Focus on system architecture"
+# Document with hint to customize the docs output
+cursor-tools doc --save-to=docs/architecture.md --quiet --hint="Focus on system architecture"
 
 # Document dependencies
-cursor-tools doc --from-github=expressjs/express --save-to=docs/EXPRESS.md
+cursor-tools doc --from-github=expressjs/express --save-to=docs/EXPRESS.md --quiet
 ```
 
 #### GitHub Integration Examples

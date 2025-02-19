@@ -15,6 +15,19 @@ Don't ask me for permission to do stuff - if you have questions work with Gemini
 
 We do not do automated unit tests or integration tests - it's trivial to manually test all the commmands by just asking cursor agent to read the readme and test all the commands.
 
+<logging and outputs>
+There are three ways that we communicate to the caller.
+console.log which goes to stdout
+console.error which goes to stderr
+and yield which is streamed either to stdout (unless the --quiet flag is used) and to the file specified by --save-to (if --save-to is specified).
+
+console.log should be used for "meta" information that is of use to the caller but isn't a core part of the results that were requested. E.g. recording which model is being used to perfom an action.
+
+console.error should be used for error messages.
+
+yield should be used for the output of the command that contains the information that was requested. d
+</logging and outputs>
+
 <testing browser commands>
 There is a test server for browser command testing and a collection of test files in tests/commands/browser/
 

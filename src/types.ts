@@ -13,6 +13,7 @@ export interface CommandOptions {
 
   // Output options
   saveTo?: string; // Path to save output to in addition to stdout
+  quiet?: boolean; // Suppress stdout output (only useful with saveTo)
 
   // Context options
   hint?: string; // Additional context or hint for the AI

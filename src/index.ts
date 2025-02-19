@@ -53,6 +53,8 @@ type CLINumberOption =
 type CLIBooleanOption =
   // Core options
   | 'debug'
+  // Output options
+  | 'quiet'
   // Browser options
   | 'console'
   | 'html'
@@ -71,6 +73,7 @@ interface CLIOptions {
   // Output options
   output?: string;
   saveTo?: string;
+  quiet?: boolean;
 
   // Context options
   hint?: string;
@@ -112,6 +115,7 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   // Output options
   output: 'output',
   saveto: 'saveTo',
+  quiet: 'quiet',
 
   // Context options
   hint: 'hint',
@@ -143,6 +147,7 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
 // Set of option keys that are boolean flags
 const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
   'debug',
+  'quiet',
   'console',
   'html',
   'network',
@@ -200,6 +205,7 @@ async function main() {
     headless: undefined,
     text: undefined,
     debug: undefined,
+    quiet: undefined,
   };
   const queryArgs: string[] = [];
 
@@ -286,7 +292,7 @@ async function main() {
 
       if (BOOLEAN_OPTIONS.has(optionKey as CLIBooleanOption)) {
         options[optionKey as CLIBooleanOption] = value === 'true';
-      } else if (value !== undefined) {
+      } else if (value !== undefined && optionKey) {
         options[optionKey as CLIStringOption] = value;
       }
     } else {
@@ -365,7 +371,23 @@ async function main() {
       thinkingProvider: options.thinkingProvider as Provider,
     };
     for await (const output of commandHandler.execute(query, commandOptions)) {
-      process.stdout.write(output);
+      // Only write to stdout if not in quiet mode
+      let writePromise: Promise<void>;
+      if (!options.quiet) {
+        writePromise = new Promise<void>((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            reject(new Error('Timeout writing to stdout'));
+          }, 10000);
+          process.stdout.write(output, () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        });
+        await writePromise;
+      } else {
+        writePromise = Promise.resolve();
+      }
+      
       if (options.saveTo) {
         try {
           appendFileSync(options.saveTo, output);
@@ -375,13 +397,14 @@ async function main() {
           options.saveTo = undefined;
         }
       }
+      await writePromise;
     }
     // this should flush stderr and stdout and write a newline
     console.log('');
     console.error('');
 
     if (options.saveTo) {
-      console.error(`Output saved to: ${options.saveTo}`);
+      console.log(`Output saved to: ${options.saveTo}`);
     }
   } catch (error) {
     console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
