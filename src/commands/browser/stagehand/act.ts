@@ -1,7 +1,12 @@
 import type { Command, CommandGenerator } from '../../../types';
 import { formatOutput, handleBrowserError, ActionError, NavigationError } from './stagehandUtils';
-import type { ConstructorParams } from '@browserbasehq/stagehand';
-import { Stagehand } from '@browserbasehq/stagehand';
+import {
+  BrowserResult,
+  ConstructorParams,
+  InitResult,
+  LogLine,
+  Stagehand,
+} from '@browserbasehq/stagehand';
 import { loadConfig } from '../../../config';
 import {
   loadStagehandConfig,
@@ -29,8 +34,7 @@ export type RecordVideoOptions = {
 overrideStagehandInit();
 
 export class ActCommand implements Command {
-  async *execute(query: string, initialOptions?: SharedBrowserCommandOptions): CommandGenerator {
-    let options = { ...initialOptions };
+  async *execute(query: string, options?: SharedBrowserCommandOptions): CommandGenerator {
     if (!query) {
       yield 'Please provide an instruction and URL. Usage: browser act "<instruction>" --url <url>';
       return;
@@ -162,7 +166,7 @@ export class ActCommand implements Command {
       }
     } catch (error) {
       console.log('error in stagehand loop');
-      yield `error in stagehand: ${handleBrowserError(error, options?.debug)}`;
+      yield 'error in stagehand: ' + handleBrowserError(error, options?.debug);
     }
   }
 
@@ -183,7 +187,6 @@ export class ActCommand implements Command {
       let totalTimeout: ReturnType<typeof setTimeout> | undefined;
       const totalTimeoutPromise = new Promise(
         (_, reject) =>
-          // biome-ignore lint/suspicious/noAssignInExpressions: guessing it should be 
           (totalTimeout = setTimeout(() => reject(new Error('Action timeout')), timeout))
       );
 

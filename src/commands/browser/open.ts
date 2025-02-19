@@ -1,6 +1,5 @@
 import type { Command, CommandGenerator } from '../../types';
 import { chromium } from 'playwright';
-import type { Browser, BrowserContext, Page } from 'playwright';
 import { loadConfig } from '../../config.ts';
 import { ensurePlaywright } from './utils.ts';
 import type { OpenCommandOptions } from './browserOptions';
@@ -20,7 +19,7 @@ function parseTimeDuration(duration: string): number | null {
   if (!match) return null;
 
   const [, value, unit] = match;
-  const numValue = Number.parseInt(value, 10);
+  const numValue = parseInt(value, 10);
 
   switch (unit) {
     case 'ms':
@@ -70,8 +69,7 @@ function parseWaitParameter(wait: string): { type: 'time' | 'selector'; value: s
 export class OpenCommand implements Command {
   private config = loadConfig();
 
-  async *execute(query: string, initialOptions?: OpenCommandOptions): CommandGenerator {
-    let options = { ...initialOptions };
+  async *execute(query: string, options?: OpenCommandOptions): CommandGenerator {
     try {
       // Check for Playwright availability first
       await ensurePlaywright();
@@ -104,9 +102,9 @@ export class OpenCommand implements Command {
       };
 
       const browserType = chromium;
-      let browser: Browser | undefined;
-      let context: BrowserContext | undefined;
-      let page: Page | undefined;
+      let browser;
+      let context;
+      let page;
       let consoleMessages: string[] = [];
       let networkMessages: string[] = [];
       let videoPath: string | null = null;
@@ -120,7 +118,6 @@ export class OpenCommand implements Command {
             (await browser.newContext({
               recordVideo: options.video
                 ? {
-                    // biome-ignore lint/style/noNonNullAssertion: TODO: Not really sure why this is forced not null when its allowed to be null above
                     dir: videoPath!,
                     size: { width: 1280, height: 720 },
                   }
@@ -146,7 +143,7 @@ export class OpenCommand implements Command {
           // Only set viewport if explicitly requested when connecting to existing instance
           if (options.viewport) {
             const [width, height] = options.viewport.split('x').map(Number);
-            if (!Number.isNaN(width) && !Number.isNaN(height)) {
+            if (!isNaN(width) && !isNaN(height)) {
               await page.setViewportSize({ width, height });
             }
           }
@@ -164,7 +161,6 @@ export class OpenCommand implements Command {
           context = await browser.newContext({
             recordVideo: options.video
               ? {
-                // biome-ignore lint/style/noNonNullAssertion: TODO: Not really sure why this is forced not null when its allowed to be null above
                   dir: videoPath!,
                   size: { width: 1280, height: 720 },
                 }
@@ -180,14 +176,14 @@ export class OpenCommand implements Command {
           // Set viewport for new browser instances
           if (options.viewport) {
             const [width, height] = options.viewport.split('x').map(Number);
-            if (!Number.isNaN(width) && !Number.isNaN(height)) {
+            if (!isNaN(width) && !isNaN(height)) {
               await page.setViewportSize({ width, height });
             } else {
               yield `Invalid viewport format: ${options.viewport}. Expected format: <width>x<height> (e.g. 1280x720)`;
             }
           } else if (this.config.browser?.defaultViewport) {
             const [width, height] = this.config.browser.defaultViewport.split('x').map(Number);
-            if (!Number.isNaN(width) && !Number.isNaN(height)) {
+            if (!isNaN(width) && !isNaN(height)) {
               await page.setViewportSize({ width, height });
             }
           }
