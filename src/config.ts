@@ -1,78 +1,28 @@
-import type { Provider } from './types';
-
-export interface Config {
-  perplexity: {
-    model: string;
-    apiKey?: string;
-    maxTokens?: number;
-  };
-  gemini: {
-    model: string;
-    apiKey?: string;
-    maxTokens?: number;
-  };
-  plan?: {
-    fileProvider: Provider;
-    thinkingProvider: Provider;
-    fileModel?: string;
-    thinkingModel?: string;
-    fileMaxTokens?: number;
-    thinkingMaxTokens?: number;
-  };
-  repo?: {
-    provider: Provider;
-    model?: string;
-    maxTokens?: number;
-  };
-  doc?: {
-    maxRepoSizeMB?: number; // Maximum repository size in MB for remote processing
-    provider: Provider;
-    model?: string;
-    maxTokens?: number;
-  };
-  tokenCount?: {
-    encoding: 'o200k_base' | 'gpt2' | 'r50k_base' | 'p50k_base' | 'p50k_edit' | 'cl100k_base'; // The tokenizer encoding to use
-  };
-  browser?: {
-    headless?: boolean; // Default headless mode (true/false)
-    defaultViewport?: string; // Default viewport size (e.g. '1280x720')
-    timeout?: number; // Default navigation timeout in milliseconds
-  };
-  stagehand?: {
-    provider: 'anthropic' | 'openai';
-    verbose?: boolean;
-    debugDom?: boolean;
-    enableCaching?: boolean;
-  };
-}
+import type { Config } from './types';
 
 export const defaultConfig: Config = {
   perplexity: {
     model: 'sonar-pro',
     maxTokens: 4000,
   },
-  gemini: {
-    model: 'gemini-2.0-pro-exp-02-05',
-    maxTokens: 10000,
-  },
   plan: {
     fileProvider: 'gemini',
     thinkingProvider: 'openrouter',
-    fileModel: 'gemini-2.0-pro-exp-02-05',
+    fileModel: 'gemini-2.0-pro-exp',
     thinkingModel: 'deepseek/deepseek-r1',
     fileMaxTokens: 8192,
     thinkingMaxTokens: 8192,
   },
   repo: {
     provider: 'gemini',
-    model: 'gemini-2.0-pro-exp-02-05',
-    maxTokens: 8192,
+    model: 'gemini-2.0-flash-thinking-exp',
+    maxTokens: 10000,
   },
   doc: {
     maxRepoSizeMB: 100,
     provider: 'gemini',
-    model: 'gemini-2.0-pro-exp-02-05',
-    maxTokens: 8192,
+    model: 'gemini-2.0-pro-exp',
+    maxTokens: 10000,
   },
   tokenCount: {
     encoding: 'o200k_base',

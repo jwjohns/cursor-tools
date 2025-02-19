@@ -32,6 +32,7 @@ export interface CommandMap {
   [key: string]: Command;
 }
 
+// Interface for the cursor-tools.config.json config file
 export interface Config {
   perplexity: {
     model: string;
@@ -46,11 +47,6 @@ export interface Config {
     fileMaxTokens?: number;
     thinkingMaxTokens?: number;
   };
-  gemini: {
-    model: string;
-    apiKey?: string;
-    maxTokens?: number;
-  }
   repo?: {
     provider: Provider;
     model?: string;
@@ -63,12 +59,12 @@ export interface Config {
     maxTokens?: number;
   };
   tokenCount?: {
-    encoding: 'o200k_base' | 'gpt2' | 'r50k_base' | 'p50k_base' | 'p50k_edit' | 'cl100k_base';
+    encoding: 'o200k_base' | 'gpt2' | 'r50k_base' | 'p50k_base' | 'p50k_edit' | 'cl100k_base'; // The tokenizer encoding to use
   };
   browser?: {
-    headless?: boolean;
-    defaultViewport?: string;
-    timeout?: number;
+    headless?: boolean; // Default headless mode (true/false)
+    defaultViewport?: string; // Default viewport size (e.g. '1280x720')
+    timeout?: number; // Default navigation timeout in milliseconds
   };
   stagehand?: {
     provider: 'anthropic' | 'openai';

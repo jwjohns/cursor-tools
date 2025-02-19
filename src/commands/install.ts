@@ -25,6 +25,22 @@ async function getUserInput(prompt: string): Promise<string> {
   });
 }
 
+async function askForCursorRulesDirectory(): Promise<boolean> {
+  // If USE_LEGACY_CURSORRULES is explicitly set, respect that setting
+  if (process.env.USE_LEGACY_CURSORRULES === 'true') {
+    return false;
+  }
+  if (process.env.USE_LEGACY_CURSORRULES === 'false') {
+    return true;
+  }
+
+  // Otherwise, ask the user
+  const answer = await getUserInput(
+    'Would you like to use the new .cursor/rules directory for cursor rules? (y/N): '
+  );
+  return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
+}
+
 export class InstallCommand implements Command {
   private async *setupApiKeys(): CommandGenerator {
     loadEnv(); // Load existing env files if any
@@ -150,7 +166,6 @@ export class InstallCommand implements Command {
             packageJson.devDependencies['cursor-tools'] = 'latest';
             // Remove from dependencies if it exists there
             if (packageJson.dependencies?.['cursor-tools']) {
-              // biome-ignore lint/performance/noDelete: we need to delete the dependency
               delete packageJson.dependencies['cursor-tools'];
             }
             writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
