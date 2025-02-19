@@ -11,15 +11,12 @@ All notable changes to this project will be documented in this file.
 - Improved page reuse in browser commands when using `--connect-to`: now reuses existing tabs instead of creating new ones for better state preservation
 - Improved error handling and type safety in cursor rules management
 - Enhanced directory creation order in installation process
-- Added user choice during installation for cursor rules location (legacy `.cursorrules` or new `.cursor/rules/cursor-tools.mdc`)
-- Added `USE_LEGACY_CURSORRULES` environment variable to control cursor rules file location
 
 ### Added
 - Support for new Cursor IDE project rules structure
-  - New installations now use `.cursor/rules/cursor-tools.mdc` by default
-  - Maintain compatibility with legacy `.cursorrules` file via `USE_LEGACY_CURSORRULES=true`
-  - Interactive choice during installation
-  - When both exist, use path based on `USE_LEGACY_CURSORRULES` environment variable
+  - New installations now use `.cursor/rules/cursor-tools.mdc`
+  - Maintain compatibility with legacy `.cursorrules` file
+  - When both exist, prefer new path and show warning
   - Updated documentation to reflect new path structure
 - Added support for the `gpt-4o` model in browser commands (`act`, `extract`, `observe`)
   - The model can be selected using the `--model=gpt-4o` command-line option
@@ -27,6 +24,22 @@ All notable changes to this project will be documented in this file.
   - If no model is specified, a default model is used based on the configured provider (OpenAI or Anthropic)
 - **Internal:** Bundled Stagehand script directly into the codebase to prevent dependency issues
 - **Build:** Added stagehand script verification to the release process
+- Enhanced `plan` command with dual-provider architecture:
+  - Separate providers for file identification and plan generation
+  - `fileProvider` handles repository file analysis
+  - `thinkingProvider` generates implementation plans
+  - New command options:
+    - `--fileProvider`: Provider for file identification (gemini, openai, or openrouter)
+    - `--thinkingProvider`: Provider for plan generation (gemini, openai, or openrouter)
+    - `--fileModel`: Model to use for file identification
+    - `--thinkingModel`: Model to use for plan generation
+    - `--fileMaxTokens`: Maximum tokens for file identification
+    - `--thinkingMaxTokens`: Maximum tokens for plan generation
+- Improved provider system with enhanced error handling and configuration:
+  - New provider interfaces for specialized tasks
+  - Shared implementations via provider mixins
+  - Better error messages and debugging support
+  - Configurable system prompts for different tasks
 
 ## [0.4.3-alpha.23] - 2024-03-22
 

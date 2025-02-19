@@ -1,12 +1,13 @@
-import type { Command, CommandGenerator, CommandOptions } from '../types.ts';
+import type { Command, CommandGenerator, CommandOptions } from '../types';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
-import { loadEnv } from '../config.ts';
-import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules.ts';
+import { loadEnv } from '../config';
+import { CURSOR_RULES_TEMPLATE, CURSOR_RULES_VERSION, checkCursorRules } from '../cursorrules';
 
 interface InstallOptions extends CommandOptions {
   packageManager?: 'npm' | 'yarn' | 'pnpm';
+  global?: boolean;
 }
 
 // Helper function to get user input and properly close stdin
@@ -22,23 +23,6 @@ async function getUserInput(prompt: string): Promise<string> {
     process.stdin.resume();
     process.stdin.once('data', onData);
   });
-}
-
-// Add this function after the getUserInput function
-async function askForCursorRulesDirectory(): Promise<boolean> {
-  // If USE_LEGACY_CURSORRULES is explicitly set, respect that setting
-  if (process.env.USE_LEGACY_CURSORRULES === 'true') {
-    return false;
-  }
-  if (process.env.USE_LEGACY_CURSORRULES === 'false') {
-    return true;
-  }
-
-  // Otherwise, ask the user
-  const answer = await getUserInput(
-    'Would you like to use the new .cursor/rules directory for cursor rules? (y/N): '
-  );
-  return answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes';
 }
 
 export class InstallCommand implements Command {
@@ -63,11 +47,10 @@ export class InstallCommand implements Command {
 
     // Function to write keys to a file
     const writeKeysToFile = (filePath: string, keys: Record<string, string>) => {
-      const envContent =
-        Object.entries(keys)
+      const envContent = `${Object.entries(keys)
           .filter(([_, value]) => value) // Only include keys with values
           .map(([key, value]) => `${key}=${value}`)
-          .join('\n') + '\n';
+          .join('\n')}\n`;
 
       const dir = join(filePath, '..');
       if (!existsSync(dir)) {
@@ -167,6 +150,7 @@ export class InstallCommand implements Command {
             packageJson.devDependencies['cursor-tools'] = 'latest';
             // Remove from dependencies if it exists there
             if (packageJson.dependencies?.['cursor-tools']) {
+              // biome-ignore lint/performance/noDelete: we need to delete the dependency
               delete packageJson.dependencies['cursor-tools'];
             }
             writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));

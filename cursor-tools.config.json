@@ -3,7 +3,27 @@
     "model": "sonar-pro"
   },
   "gemini": {
-    "model": "gemini-2.0-pro-exp-02-05"
+    "model": "gemini-2.0-pro-exp-02-05",
+    "maxTokens": 10000
+  },
+  "plan": {
+    "fileProvider": "gemini",
+    "thinkingProvider": "openrouter",
+    "fileModel": "gemini-2.0-pro-exp-02-05",
+    "thinkingModel": "deepseek/deepseek-r1",
+    "fileMaxTokens": 8192,
+    "thinkingMaxTokens": 8192
+  },
+  "repo": {
+    "provider": "gemini",
+    "model": "gemini-2.0-pro-exp-02-05",
+    "maxTokens": 10000
+  },
+  "doc": {
+    "maxRepoSizeMB": 100,
+    "provider": "gemini",
+    "model": "gemini-2.0-pro-exp-02-05",
+    "maxTokens": 10000
   },
   "tokenCount": {
     "encoding": "o200k_base"
