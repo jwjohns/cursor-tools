@@ -10,13 +10,13 @@ export interface CommandOptions {
   provider?: Provider;
   debug?: boolean;
   url?: string;
-  
+
   // Output options
   saveTo?: string; // Path to save output to in addition to stdout
-  
+
   // Context options
   hint?: string; // Additional context or hint for the AI
-  
+
   // Plan command specific options
   fileProvider?: Provider;
   thinkingProvider?: Provider;

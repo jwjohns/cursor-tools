@@ -1,6 +1,9 @@
 // Base error class for all cursor-tools errors
 export class CursorToolsError extends Error {
-  constructor(message: string, public readonly details?: unknown) {
+  constructor(
+    message: string,
+    public readonly details?: unknown
+  ) {
     super(message);
     this.name = 'CursorToolsError';
   }
@@ -8,11 +11,11 @@ export class CursorToolsError extends Error {
   // Format error message for user display
   public formatUserMessage(debug = false): string {
     let message = `${this.message}`;
-    
+
     if (debug && this.details) {
       message += `\nDetails: ${JSON.stringify(this.details, null, 2)}`;
     }
-    
+
     return message;
   }
 }
@@ -37,10 +40,10 @@ export class ApiKeyMissingError extends ProviderError {
 
 export class ModelNotFoundError extends ProviderError {
   constructor(provider: string, model?: string) {
-    super(
-      `No model specified for ${provider}${model ? ` (requested model: ${model})` : ''}.`,
-      { provider, model }
-    );
+    super(`No model specified for ${provider}${model ? ` (requested model: ${model})` : ''}.`, {
+      provider,
+      model,
+    });
     this.name = 'ModelNotFoundError';
   }
 }

@@ -43,14 +43,14 @@ type CLIStringOption =
   | 'fileModel'
   | 'thinkingModel';
 
-type CLINumberOption = 
+type CLINumberOption =
   // Core options
   | 'maxTokens'
   // Browser options
   | 'timeout'
   | 'connectTo';
 
-type CLIBooleanOption = 
+type CLIBooleanOption =
   // Core options
   | 'debug'
   // Browser options
@@ -147,15 +147,11 @@ const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
   'html',
   'network',
   'headless',
-  'text'
+  'text',
 ]);
 
 // Set of option keys that require numeric values
-const NUMERIC_OPTIONS = new Set<CLINumberOption>([
-  'maxTokens',
-  'timeout',
-  'connectTo'
-]);
+const NUMERIC_OPTIONS = new Set<CLINumberOption>(['maxTokens', 'timeout', 'connectTo']);
 
 async function main() {
   const [, , command, ...args] = process.argv;
@@ -366,7 +362,7 @@ async function main() {
       ...options,
       provider: options.provider as Provider,
       fileProvider: options.fileProvider as Provider,
-      thinkingProvider: options.thinkingProvider as Provider
+      thinkingProvider: options.thinkingProvider as Provider,
     };
     for await (const output of commandHandler.execute(query, commandOptions)) {
       process.stdout.write(output);

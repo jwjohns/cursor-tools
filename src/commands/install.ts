@@ -64,9 +64,9 @@ export class InstallCommand implements Command {
     // Function to write keys to a file
     const writeKeysToFile = (filePath: string, keys: Record<string, string>) => {
       const envContent = `${Object.entries(keys)
-          .filter(([_, value]) => value) // Only include keys with values
-          .map(([key, value]) => `${key}=${value}`)
-          .join('\n')}\n`;
+        .filter(([_, value]) => value) // Only include keys with values
+        .map(([key, value]) => `${key}=${value}`)
+        .join('\n')}\n`;
 
       const dir = join(filePath, '..');
       if (!existsSync(dir)) {

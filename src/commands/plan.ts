@@ -1,10 +1,10 @@
 import type { Command, CommandGenerator, CommandOptions } from '../types';
-import type { Config } from '../config';
+import type { Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
-import { GeminiProvider, OpenAIProvider, OpenRouterProvider, createProvider } from '../providers/base';
+import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
 import { FileError, ProviderError } from '../errors';
 
 // Plan-specific provider interface
@@ -37,8 +37,12 @@ export class PlanCommand implements Command {
 
   async *execute(query: string, options?: CommandOptions): CommandGenerator {
     try {
-      const fileProvider = createPlanProvider(options?.fileProvider || this.config.plan?.fileProvider || 'gemini');
-      const thinkingProvider = createPlanProvider(options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai');
+      const fileProvider = createPlanProvider(
+        options?.fileProvider || this.config.plan?.fileProvider || 'gemini'
+      );
+      const thinkingProvider = createPlanProvider(
+        options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai'
+      );
 
       if (options?.debug) {
         yield `Using file provider: ${options?.fileProvider || this.config.plan?.fileProvider || 'gemini'}\n`;
@@ -48,7 +52,7 @@ export class PlanCommand implements Command {
       }
 
       yield 'Finding relevant files...\n';
-      
+
       // Get file listing
       let fileListing: string;
       try {
@@ -69,21 +73,21 @@ export class PlanCommand implements Command {
             showLineNumbers: false,
             copyToClipboard: false,
             includeEmptyDirectories: false,
-            topFilesLength: 1000
+            topFilesLength: 1000,
           },
           include: ['**/*'],
           ignore: {
             useGitignore: true,
             useDefaultPatterns: true,
-            customPatterns: []
+            customPatterns: [],
           },
           security: {
-            enableSecurityCheck: true
+            enableSecurityCheck: true,
           },
           tokenCount: {
-            encoding: this.config.tokenCount?.encoding || 'o200k_base'
+            encoding: this.config.tokenCount?.encoding || 'o200k_base',
           },
-          cwd: process.cwd()
+          cwd: process.cwd(),
         });
 
         if (options?.debug) {
@@ -91,7 +95,7 @@ export class PlanCommand implements Command {
         }
 
         fileListing = readFileSync(tempFile, 'utf-8');
-        
+
         if (options?.debug) {
           yield `Found ${fileListing.split('\n').length} files in total.\n`;
           yield 'First few files:\n';
@@ -117,7 +121,7 @@ export class PlanCommand implements Command {
 
         filePaths = await (fileProvider as PlanModelProvider).getRelevantFiles(query, fileListing, {
           model: options?.fileModel || this.config.plan?.fileModel,
-          maxTokens: options?.maxTokens || this.config.plan?.fileMaxTokens
+          maxTokens: options?.maxTokens || this.config.plan?.fileMaxTokens,
         });
 
         if (options?.debug) {
@@ -160,21 +164,21 @@ export class PlanCommand implements Command {
             showLineNumbers: false,
             copyToClipboard: false,
             includeEmptyDirectories: false,
-            topFilesLength: 1000
+            topFilesLength: 1000,
           },
           include: filePaths,
           ignore: {
             useGitignore: true,
             useDefaultPatterns: true,
-            customPatterns: []
+            customPatterns: [],
           },
           security: {
-            enableSecurityCheck: true
+            enableSecurityCheck: true,
           },
           tokenCount: {
-            encoding: 'cl100k_base'
+            encoding: 'cl100k_base',
           },
-          cwd: process.cwd()
+          cwd: process.cwd(),
         });
 
         if (options?.debug) {
@@ -191,14 +195,13 @@ export class PlanCommand implements Command {
       try {
         plan = await (thinkingProvider as PlanModelProvider).generatePlan(query, filteredContent, {
           model: options?.thinkingModel || this.config.plan?.thinkingModel,
-          maxTokens: options?.maxTokens || this.config.plan?.thinkingMaxTokens
+          maxTokens: options?.maxTokens || this.config.plan?.thinkingMaxTokens,
         });
       } catch (error) {
         throw new ProviderError('Failed to generate implementation plan', error);
       }
 
       yield plan;
-
     } catch (error) {
       if (error instanceof FileError || error instanceof ProviderError) {
         yield `${error.name}: ${error.message}\n`;
@@ -219,9 +222,9 @@ function parseFileList(fileListText: string): string[] {
   // First try to parse as a comma-separated list
   const files = fileListText
     .split(/[,\n]/) // Split on commas or newlines
-    .map(f => f.trim())
-    .map(f => f.replace(/[`'"]/g, '')) // Remove quotes and backticks
-    .filter(f => f.length > 0 && !f.includes('*')); // Filter empty lines and wildcards
+    .map((f) => f.trim())
+    .map((f) => f.replace(/[`'"]/g, '')) // Remove quotes and backticks
+    .filter((f) => f.length > 0 && !f.includes('*')); // Filter empty lines and wildcards
 
   if (files.length > 0) {
     return files;
@@ -229,13 +232,18 @@ function parseFileList(fileListText: string): string[] {
 
   // If no files found, try to extract paths using a regex
   const pathRegex = /(?:^|\s|["'`])([a-zA-Z0-9_\-/.]+\.[a-zA-Z0-9]+)(?:["'`]|\s|$)/g;
-  const matches = Array.from(fileListText.matchAll(pathRegex), m => m[1]);
-  return matches.filter(f => f.length > 0);
+  const matches = Array.from(fileListText.matchAll(pathRegex), (m) => m[1]);
+  return matches.filter((f) => f.length > 0);
 }
 
 // Shared mixin for plan providers
 const PlanProviderMixin = {
-  async getRelevantFiles(this: BaseModelProvider, query: string, fileListing: string, options?: ModelOptions): Promise<string[]> {
+  async getRelevantFiles(
+    this: BaseModelProvider,
+    query: string,
+    fileListing: string,
+    options?: ModelOptions
+  ): Promise<string[]> {
     const response = await this.executePrompt(
       `You are an expert software developer. Your task is to identify files that are relevant to the following query:
 
@@ -248,21 +256,25 @@ Files:
 ${fileListing}`,
       {
         ...options,
-        systemPrompt: 'You are an expert software developer. You must return ONLY a comma-separated list of file paths. No other text or formatting.'
+        systemPrompt:
+          'You are an expert software developer. You must return ONLY a comma-separated list of file paths. No other text or formatting.',
       }
     );
     return parseFileList(response);
   },
 
-  async generatePlan(this: BaseModelProvider, query: string, repoContext: string, options?: ModelOptions): Promise<string> {
-    return this.executePrompt(
-      `Query: ${query}\n\nRepository Context:\n${repoContext}`,
-      {
-        ...options,
-        systemPrompt: 'You are a helpful assistant that generates step-by-step implementation plans for software development tasks. Given a query and a repository context, generate a detailed plan. Include specific file paths, code snippets, and any necessary commands.'
-      }
-    );
-  }
+  async generatePlan(
+    this: BaseModelProvider,
+    query: string,
+    repoContext: string,
+    options?: ModelOptions
+  ): Promise<string> {
+    return this.executePrompt(`Query: ${query}\n\nRepository Context:\n${repoContext}`, {
+      ...options,
+      systemPrompt:
+        'You are a helpful assistant that generates step-by-step implementation plans for software development tasks. Given a query and a repository context, generate a detailed plan. Include specific file paths, code snippets, and any necessary commands.',
+    });
+  },
 };
 
 // Plan provider implementations

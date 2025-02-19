@@ -68,17 +68,18 @@ export class GeminiProvider extends BaseProvider {
       );
       return { model: 'gemini-2.0-pro-exp-02-05' };
     }
-    
+
     if (tokenCount >= 2_000_000) {
       return {
-        error: 'Repository content is too large for Gemini API.\n' +
+        error:
+          'Repository content is too large for Gemini API.\n' +
           'Please try:\n' +
           '1. Using a more specific query to document a particular feature or module\n' +
           '2. Running the documentation command on a specific directory or file\n' +
-          '3. Cloning the repository locally and using .gitignore to exclude non-essential files'
+          '3. Cloning the repository locally and using .gitignore to exclude non-essential files',
       };
     }
-    
+
     return {};
   }
 
@@ -148,12 +149,14 @@ abstract class OpenAIBase extends BaseProvider {
     super();
     this.client = new OpenAI({
       apiKey,
-      ...(baseURL ? { baseURL } : {})
+      ...(baseURL ? { baseURL } : {}),
     });
   }
 
   protected getSystemPrompt(options?: ModelOptions): string | undefined {
-    return options?.systemPrompt || 'You are a helpful assistant. Provide clear and concise responses.';
+    return (
+      options?.systemPrompt || 'You are a helpful assistant. Provide clear and concise responses.'
+    );
   }
 
   async executePrompt(prompt: string, options?: ModelOptions): Promise<string> {
@@ -166,7 +169,7 @@ abstract class OpenAIBase extends BaseProvider {
         model,
         messages: [
           ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
-          { role: 'user' as const, content: prompt }
+          { role: 'user' as const, content: prompt },
         ],
         max_tokens: maxTokens,
       });
@@ -220,4 +223,4 @@ export function createProvider(provider: 'gemini' | 'openai' | 'openrouter'): Ba
     default:
       throw new Error(`Unknown provider: ${provider}`);
   }
-} 
+}

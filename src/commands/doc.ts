@@ -47,7 +47,9 @@ export class DocCommand implements Command {
     return { username: parts[0], reponame: parts[1], branch };
   }
 
-  private async getGithubRepoContext(repoPath: string): Promise<{ text: string; tokenCount: number }> {
+  private async getGithubRepoContext(
+    repoPath: string
+  ): Promise<{ text: string; tokenCount: number }> {
     const { username, reponame, branch } = this.parseGithubUrl(repoPath);
     const repoIdentifier = `${username}/${reponame}`;
 
@@ -161,7 +163,7 @@ Please:
         }
 
         // Calculate delay with exponential backoff and jitter
-        const delay = INITIAL_DELAY * (2 ** (attempt - 1)) * (0.5 + Math.random());
+        const delay = INITIAL_DELAY * 2 ** (attempt - 1) * (0.5 + Math.random());
         console.error(
           `Attempt ${attempt} failed. Retrying in ${Math.round(delay / 1000)} seconds...`
         );
@@ -174,7 +176,7 @@ Please:
 
         // For network errors (like timeouts), retry
         if (error instanceof Error) {
-          const delay = INITIAL_DELAY * (2 ** (attempt - 1)) * (0.5 + Math.random());
+          const delay = INITIAL_DELAY * 2 ** (attempt - 1) * (0.5 + Math.random());
           console.error(`Attempt ${attempt} failed: ${error.message}`);
           console.error(`Retrying in ${Math.round(delay / 1000)} seconds...`);
           await new Promise((resolve) => setTimeout(resolve, delay));
@@ -211,21 +213,21 @@ Please:
               showLineNumbers: false,
               copyToClipboard: false,
               includeEmptyDirectories: false,
-              topFilesLength: 1000
+              topFilesLength: 1000,
             },
             include: ['**/*'],
             ignore: {
               useGitignore: true,
               useDefaultPatterns: true,
-              customPatterns: []
+              customPatterns: [],
             },
             security: {
-              enableSecurityCheck: true
+              enableSecurityCheck: true,
             },
             tokenCount: {
-              encoding: this.config.tokenCount?.encoding || 'o200k_base'
+              encoding: this.config.tokenCount?.encoding || 'o200k_base',
             },
-            cwd: process.cwd()
+            cwd: process.cwd(),
           });
         } catch (error) {
           throw new FileError('Failed to pack repository', error);
@@ -238,11 +240,16 @@ Please:
         }
       }
 
-      const provider = createDocProvider(options?.provider || this.config.doc?.provider || 'gemini');
+      const provider = createDocProvider(
+        options?.provider || this.config.doc?.provider || 'gemini'
+      );
       const providerName = options?.provider || this.config.doc?.provider || 'gemini';
-      
+
       // Add default model handling
       const getDefaultModel = (provider: string, tokenCount: number) => {
+        if ((this.config as Record<string, any>)[provider]?.model) {
+          return (this.config as Record<string, any>)[provider]?.model;
+        }
         switch (provider) {
           case 'gemini':
             // Restore token count based model selection for Gemini
@@ -250,7 +257,7 @@ Please:
               console.error(
                 `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp-02-05 model...`
               );
-              return 'gemini-2.0-pro-exp-02-05';
+              return 'gemini-2.0-pro-exp';
             }
             return 'gemini-2.0-pro';
           case 'openai':
@@ -262,7 +269,10 @@ Please:
         }
       };
 
-      const model = options?.model || this.config.doc?.model || getDefaultModel(providerName, repoContext.tokenCount);
+      const model =
+        options?.model ||
+        this.config.doc?.model ||
+        getDefaultModel(providerName, repoContext.tokenCount);
 
       if (!model) {
         throw new ModelNotFoundError(providerName);
@@ -284,10 +294,16 @@ Please try:
       try {
         documentation = await provider.generateDocumentation(repoContext, {
           model,
-          maxTokens: options?.maxTokens || this.config.doc?.maxTokens
+          maxTokens:
+            options?.maxTokens ||
+            this.config.doc?.maxTokens ||
+            (this.config as Record<string, any>)[providerName]?.maxTokens,
         });
       } catch (error) {
-        throw new ProviderError(error instanceof Error ? error.message : 'Unknown error during generation', error);
+        throw new ProviderError(
+          error instanceof Error ? error.message : 'Unknown error during generation',
+          error
+        );
       }
 
       // Save to file if output option is provided
@@ -320,12 +336,19 @@ Please try:
 
 // Documentation-specific provider interface
 export interface DocModelProvider extends BaseModelProvider {
-  generateDocumentation(repoContext: { text: string; tokenCount: number }, options?: ModelOptions): Promise<string>;
+  generateDocumentation(
+    repoContext: { text: string; tokenCount: number },
+    options?: ModelOptions
+  ): Promise<string>;
 }
 
 // Shared mixin for doc providers
 const DocProviderMixin = {
-  async generateDocumentation(this: BaseModelProvider, repoContext: { text: string; tokenCount: number }, options?: ModelOptions): Promise<string> {
+  async generateDocumentation(
+    this: BaseModelProvider,
+    repoContext: { text: string; tokenCount: number },
+    options?: ModelOptions
+  ): Promise<string> {
     const prompt = `
 Focus on:
 1. Repository purpose and "what is it" summary
@@ -343,9 +366,10 @@ ${repoContext.text}`;
     return this.executePrompt(prompt, {
       ...options,
       tokenCount: repoContext.tokenCount,
-      systemPrompt: 'You are a documentation expert. Generate comprehensive documentation that is clear, well-structured, and follows best practices.'
+      systemPrompt:
+        'You are a documentation expert. Generate comprehensive documentation that is clear, well-structured, and follows best practices.',
     });
-  }
+  },
 };
 
 // Documentation provider implementations
@@ -373,4 +397,4 @@ export function createDocProvider(provider: 'gemini' | 'openai' | 'openrouter'):
     default:
       throw new ModelNotFoundError(provider);
   }
-} 
+}

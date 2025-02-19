@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator, CommandOptions } from '../types';
-import type { Config } from '../config';
+import type { Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
@@ -7,6 +7,7 @@ import { FileError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
+import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 
 export class RepoCommand implements Command {
   private config: Config;
@@ -23,31 +24,22 @@ export class RepoCommand implements Command {
       try {
         await pack(process.cwd(), {
           output: {
+            ...outputOptions,
             filePath: '.repomix-output.txt',
-            style: 'plain',
-            parsableStyle: false,
-            fileSummary: false,
-            directoryStructure: true,
-            removeComments: false,
-            removeEmptyLines: true,
-            showLineNumbers: false,
-            copyToClipboard: false,
-            includeEmptyDirectories: false,
-            topFilesLength: 1000
           },
-          include: ['**/*'],
+          include: includePatterns,
           ignore: {
             useGitignore: true,
             useDefaultPatterns: true,
-            customPatterns: []
+            customPatterns: ignorePatterns,
           },
           security: {
-            enableSecurityCheck: true
+            enableSecurityCheck: true,
           },
           tokenCount: {
-            encoding: this.config.tokenCount?.encoding || 'o200k_base'
+            encoding: this.config.tokenCount?.encoding || 'o200k_base',
           },
-          cwd: process.cwd()
+          cwd: process.cwd(),
         });
       } catch (error) {
         throw new FileError('Failed to pack repository', error);
@@ -67,9 +59,20 @@ export class RepoCommand implements Command {
         // Ignore if .cursorrules doesn't exist
       }
 
-      const provider = createRepoProvider(options?.provider || this.config.repo?.provider || 'gemini');
+      const provider = createRepoProvider(
+        options?.provider || this.config.repo?.provider || 'gemini'
+      );
       const providerName = options?.provider || this.config.repo?.provider || 'gemini';
-      const model = options?.model || this.config?.repo?.model;
+
+      // Configuration hierarchy
+      const model =
+        options?.model ||
+        this.config.repo?.model ||
+        (this.config as Record<string, any>)[providerName]?.model;
+      const maxTokens =
+        options?.maxTokens ||
+        this.config.repo?.maxTokens ||
+        (this.config as Record<string, any>)[providerName]?.maxTokens;
 
       if (!model) {
         throw new ProviderError(`No model specified for ${providerName}`);
@@ -79,11 +82,14 @@ export class RepoCommand implements Command {
       try {
         const response = await provider.analyzeRepository(query, repoContext, cursorRules, {
           model,
-          maxTokens: options?.maxTokens || this.config.repo?.maxTokens
+          maxTokens,
         });
         yield response;
       } catch (error) {
-        throw new ProviderError(error instanceof Error ? error.message : 'Unknown error during analysis', error);
+        throw new ProviderError(
+          error instanceof Error ? error.message : 'Unknown error during analysis',
+          error
+        );
       }
     } catch (error) {
       if (error instanceof FileError || error instanceof ProviderError) {
@@ -95,24 +101,33 @@ export class RepoCommand implements Command {
       }
     }
   }
-} 
+}
 
 // Repository-specific provider interface
 export interface RepoModelProvider extends BaseModelProvider {
-  analyzeRepository(query: string, repoContext: string, cursorRules: string, options?: ModelOptions): Promise<string>;
+  analyzeRepository(
+    query: string,
+    repoContext: string,
+    cursorRules: string,
+    options?: ModelOptions
+  ): Promise<string>;
 }
 
 // Shared mixin for repo providers
 const RepoProviderMixin = {
-  async analyzeRepository(this: BaseModelProvider, query: string, repoContext: string, cursorRules: string, options?: ModelOptions): Promise<string> {
-    return this.executePrompt(
-      `${cursorRules}\n\n${repoContext}\n\n${query}`,
-      {
-        ...options,
-        systemPrompt: 'You are an expert software developer analyzing a repository. Provide clear, actionable insights and recommendations.'
-      }
-    );
-  }
+  async analyzeRepository(
+    this: BaseModelProvider,
+    query: string,
+    repoContext: string,
+    cursorRules: string,
+    options?: ModelOptions
+  ): Promise<string> {
+    return this.executePrompt(`${cursorRules}\n\n${repoContext}\n\n${query}`, {
+      ...options,
+      systemPrompt:
+        'You are an expert software developer analyzing a repository. Follow user instructions exactly.',
+    });
+  },
 };
 
 // Repository provider implementations
@@ -129,7 +144,9 @@ export class RepoOpenRouterProvider extends OpenRouterProvider implements RepoMo
 }
 
 // Factory function to create providers
-export function createRepoProvider(provider: 'gemini' | 'openai' | 'openrouter'): RepoModelProvider {
+export function createRepoProvider(
+  provider: 'gemini' | 'openai' | 'openrouter'
+): RepoModelProvider {
   switch (provider) {
     case 'gemini':
       return new RepoGeminiProvider();
@@ -140,4 +157,4 @@ export function createRepoProvider(provider: 'gemini' | 'openai' | 'openrouter')
     default:
       throw new ModelNotFoundError(provider);
   }
-} 
+}

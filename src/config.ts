@@ -38,6 +38,36 @@ export const defaultConfig: Config = {
     debugDom: false,
     enableCaching: true,
   },
+  // Note that it is also permitted to add provider-specific config options
+  // in the config file, even though they are not shown in this interface.
+  // command specific configuration always overrides the provider specific
+  // configuration
+  //
+  //   "gemini": {
+  //     "model": "gemini-2.0-pro-exp-02-05",
+  //     "maxTokens": 10000
+  //   }
+  //
+  //  or
+  //
+  //   "openai": {
+  //     "model": "gpt-4o",
+  //     "maxTokens": 10000
+  //   }
+  //
+  // these would apply if the command was run with the --provider flag
+  // or if provider is configured for a command without additional fields
+  // e.g.
+  //
+  //   "repo": {
+  //     "provider": "openai",
+  //   }
+  //
+  // or
+  //
+  //   "docs": {
+  //     "provider": "gemini",
+  //   }
 };
 
 import { existsSync, readFileSync } from 'node:fs';
