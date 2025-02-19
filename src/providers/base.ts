@@ -1,4 +1,4 @@
-import type { Config } from '../config';
+import type { Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import OpenAI from 'openai';
 import { ApiKeyMissingError, ModelNotFoundError, NetworkError, ProviderError } from '../errors';

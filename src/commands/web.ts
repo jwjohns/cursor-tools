@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator, CommandOptions } from '../types.ts';
-import type { Config } from '../config.ts';
+import type { Config } from '../types.ts';
 import { loadConfig, loadEnv } from '../config.ts';
 import { createEventSource } from 'eventsource-client';
 

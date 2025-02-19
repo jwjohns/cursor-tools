@@ -252,14 +252,7 @@ Please:
         }
         switch (provider) {
           case 'gemini':
-            // Restore token count based model selection for Gemini
-            if (tokenCount > 800_000 && tokenCount < 2_000_000) {
-              console.error(
-                `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp-02-05 model...`
-              );
-              return 'gemini-2.0-pro-exp';
-            }
-            return 'gemini-2.0-pro';
+            return 'gemini-2.0-pro-exp';
           case 'openai':
             return 'gpt-4';
           case 'openrouter':
@@ -276,17 +269,6 @@ Please:
 
       if (!model) {
         throw new ModelNotFoundError(providerName);
-      }
-
-      // Add token limit check for Gemini
-      if (providerName === 'gemini' && repoContext.tokenCount >= 2_000_000) {
-        throw new ProviderError(
-          `Repository content is too large (${Math.round(repoContext.tokenCount / 1000)}K tokens) for Gemini API.
-Please try:
-1. Using a more specific query to document a particular feature or module
-2. Running the documentation command on a specific directory or file
-3. Cloning the repository locally and using .gitignore to exclude non-essential files`
-        );
       }
 
       console.error(`Generating documentation using ${model}...\n`);

@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
 import { FileError, ProviderError } from '../errors';
+import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 
 // Plan-specific provider interface
 export interface PlanModelProvider extends BaseModelProvider {
@@ -37,49 +38,45 @@ export class PlanCommand implements Command {
 
   async *execute(query: string, options?: CommandOptions): CommandGenerator {
     try {
-      const fileProvider = createPlanProvider(
-        options?.fileProvider || this.config.plan?.fileProvider || 'gemini'
-      );
-      const thinkingProvider = createPlanProvider(
-        options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai'
-      );
+      const fileProviderName = options?.fileProvider || this.config.plan?.fileProvider || 'gemini';
+      const fileProvider = createPlanProvider(fileProviderName);
+      const thinkingProviderName =
+        options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai';
+      const thinkingProvider = createPlanProvider(thinkingProviderName);
 
-      if (options?.debug) {
-        yield `Using file provider: ${options?.fileProvider || this.config.plan?.fileProvider || 'gemini'}\n`;
-        yield `Using thinking provider: ${options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai'}\n`;
-        yield `Using file model: ${options?.fileModel || this.config.plan?.fileModel}\n`;
-        yield `Using thinking model: ${options?.thinkingModel || this.config.plan?.thinkingModel}\n`;
-      }
+      const fileModel =
+        options?.fileModel ||
+        this.config.plan?.fileModel ||
+        (this.config as Record<string, any>)[fileProviderName]?.model;
+      const thinkingModel =
+        options?.thinkingModel ||
+        this.config.plan?.thinkingModel ||
+        (this.config as Record<string, any>)[thinkingProviderName]?.model;
+
+      yield `Using file provider: ${fileProviderName}\n`;
+      yield `Using thinking provider: ${thinkingProviderName}\n`;
+      yield `Using file model: ${fileModel}\n`;
+      yield `Using thinking model: ${thinkingModel}\n`;
 
       yield 'Finding relevant files...\n';
 
       // Get file listing
-      let fileListing: string;
+      let packedRepo: string;
       try {
-        if (options?.debug) {
-          yield 'Running repomix to get file listing...\n';
-        }
+        yield 'Running repomix to get file listing...\n';
 
         const tempFile = '.repomix-plan-files.txt';
-        await pack(process.cwd(), {
+        const repomixResult = await pack(process.cwd(), {
           output: {
+            ...outputOptions,
             filePath: tempFile,
-            style: 'plain',
-            parsableStyle: false,
-            fileSummary: false,
-            directoryStructure: false,
-            removeComments: false,
-            removeEmptyLines: true,
-            showLineNumbers: false,
-            copyToClipboard: false,
             includeEmptyDirectories: false,
-            topFilesLength: 1000,
           },
-          include: ['**/*'],
+          include: includePatterns,
           ignore: {
             useGitignore: true,
             useDefaultPatterns: true,
-            customPatterns: [],
+            customPatterns: ignorePatterns,
           },
           security: {
             enableSecurityCheck: true,
@@ -94,15 +91,16 @@ export class PlanCommand implements Command {
           yield 'Repomix completed successfully.\n';
         }
 
-        fileListing = readFileSync(tempFile, 'utf-8');
+        // TODO: this seems like an expensive way to get a list of files
+        packedRepo = readFileSync(tempFile, 'utf-8');
 
+        yield `Found ${repomixResult.totalFiles} files, approx ${repomixResult.totalTokens} tokens.\n`;
         if (options?.debug) {
-          yield `Found ${fileListing.split('\n').length} files in total.\n`;
           yield 'First few files:\n';
-          yield `${fileListing.split('\n').slice(0, 5).join('\n')}\n\n`;
+          yield `${packedRepo.split('\n').slice(0, 5).join('\n')}\n\n`;
           yield 'File listing format check:\n';
-          yield `First 200 characters: ${JSON.stringify(fileListing.slice(0, 200))}\n`;
-          yield `Last 200 characters: ${JSON.stringify(fileListing.slice(-200))}\n\n`;
+          yield `First 200 characters: ${JSON.stringify(packedRepo.slice(0, 200))}\n`;
+          yield `Last 200 characters: ${JSON.stringify(packedRepo.slice(-200))}\n\n`;
         }
       } catch (error) {
         throw new FileError('Failed to get file listing', error);
@@ -111,15 +109,16 @@ export class PlanCommand implements Command {
       // Get relevant files
       let filePaths: string[];
       try {
+        yield `Asking ${fileProviderName} to identify relevant files...\n`;
+
         if (options?.debug) {
-          yield 'Asking AI to identify relevant files...\n';
           yield 'Provider configuration:\n';
-          yield `Provider: ${options?.fileProvider || this.config.plan?.fileProvider || 'gemini'}\n`;
-          yield `Model: ${options?.fileModel || this.config.plan?.fileModel}\n`;
+          yield `Provider: ${fileProviderName}\n`;
+          yield `Model: ${fileModel}\n`;
           yield `Max tokens: ${options?.maxTokens || this.config.plan?.fileMaxTokens}\n\n`;
         }
 
-        filePaths = await (fileProvider as PlanModelProvider).getRelevantFiles(query, fileListing, {
+        filePaths = await (fileProvider as PlanModelProvider).getRelevantFiles(query, packedRepo, {
           model: options?.fileModel || this.config.plan?.fileModel,
           maxTokens: options?.maxTokens || this.config.plan?.fileMaxTokens,
         });
@@ -154,17 +153,9 @@ export class PlanCommand implements Command {
         const tempFile = '.repomix-plan-filtered.txt';
         await pack(process.cwd(), {
           output: {
+            ...outputOptions,
             filePath: tempFile,
-            style: 'plain',
-            parsableStyle: false,
-            fileSummary: true,
-            directoryStructure: false,
-            removeComments: false,
-            removeEmptyLines: true,
-            showLineNumbers: false,
-            copyToClipboard: false,
             includeEmptyDirectories: false,
-            topFilesLength: 1000,
           },
           include: filePaths,
           ignore: {
@@ -190,10 +181,10 @@ export class PlanCommand implements Command {
         throw new FileError('Failed to extract content', error);
       }
 
-      yield 'Generating implementation plan...\n';
+      yield 'Generating implementation plan using ${thinkingProviderName}...\n';
       let plan: string;
       try {
-        plan = await (thinkingProvider as PlanModelProvider).generatePlan(query, filteredContent, {
+        plan = await thinkingProvider.generatePlan(query, filteredContent, {
           model: options?.thinkingModel || this.config.plan?.thinkingModel,
           maxTokens: options?.maxTokens || this.config.plan?.thinkingMaxTokens,
         });
@@ -245,11 +236,11 @@ const PlanProviderMixin = {
     options?: ModelOptions
   ): Promise<string[]> {
     const response = await this.executePrompt(
-      `You are an expert software developer. Your task is to identify files that are relevant to the following query:
+      `Identify files that are relevant to the following query:
 
 Query: ${query}
 
-Below is a list of files in the repository. Return ONLY a comma-separated list of file paths that are relevant to the query.
+Below are the details of all files in the repository. Return ONLY a comma-separated list of file paths that are relevant to the query.
 Do not include any other text, explanations, or markdown formatting. Just the file paths separated by commas.
 
 Files:
