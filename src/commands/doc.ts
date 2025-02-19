@@ -1,5 +1,4 @@
-import type { Command, CommandGenerator, CommandOptions } from '../types';
-import type { Config } from '../config';
+import type { Command, CommandGenerator, CommandOptions, Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -7,6 +6,7 @@ import { FileError, NetworkError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
+import { ignorePatterns, includePatterns } from '../repomix/repomixConfig';
 
 interface DocCommandOptions extends CommandOptions {
   model?: string;
@@ -102,8 +102,8 @@ The current size limit is ${maxSize}MB. You can:
               fileSummary: true,
               directoryStructure: true,
               outputParsable: false,
-              includePatterns: ['**/*'],
-              ignorePatterns: ['.git/**', 'node_modules/**'],
+              includePatterns: includePatterns.join(','),
+              ignorePatterns: ignorePatterns.join(','),
             },
             signal: {},
           }),
@@ -240,10 +240,43 @@ Please:
 
       const provider = createDocProvider(options?.provider || this.config.doc?.provider || 'gemini');
       const providerName = options?.provider || this.config.doc?.provider || 'gemini';
-      const model = options?.model || this.config?.doc?.model;
+      
+      // Add default model handling
+      const getDefaultModel = (provider: string, tokenCount: number) => {
+        switch (provider) {
+          case 'gemini':
+            // Restore token count based model selection for Gemini
+            if (tokenCount > 800_000 && tokenCount < 2_000_000) {
+              console.error(
+                `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp-02-05 model...`
+              );
+              return 'gemini-2.0-pro-exp-02-05';
+            }
+            return 'gemini-2.0-pro';
+          case 'openai':
+            return 'gpt-4';
+          case 'openrouter':
+            return 'anthropic/claude-3-opus';
+          default:
+            return undefined;
+        }
+      };
+
+      const model = options?.model || this.config.doc?.model || getDefaultModel(providerName, repoContext.tokenCount);
 
       if (!model) {
         throw new ModelNotFoundError(providerName);
+      }
+
+      // Add token limit check for Gemini
+      if (providerName === 'gemini' && repoContext.tokenCount >= 2_000_000) {
+        throw new ProviderError(
+          `Repository content is too large (${Math.round(repoContext.tokenCount / 1000)}K tokens) for Gemini API.
+Please try:
+1. Using a more specific query to document a particular feature or module
+2. Running the documentation command on a specific directory or file
+3. Cloning the repository locally and using .gitignore to exclude non-essential files`
+        );
       }
 
       console.error(`Generating documentation using ${model}...\n`);
