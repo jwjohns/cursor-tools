@@ -1,10 +1,10 @@
 # Git Worktree Guide
 
-Git worktrees solve the common problem of needing to switch between multiple branches frequently without losing your current work. Imagine you're deep into developing a new feature, and suddenly a critical bug needs immediate attention on a different branch. Without worktrees, you'd have to stash or commit your unfinished changes, switch branches, fix the bug, switch back, and then unstash/revert. This context switching is time-consuming and error-prone.
+Git worktrees solve the common problem of needing to switch between multiple branches frequently to work on multiple features simultaneously or to switch tasks quickly without staging your work in progress. Imagine you're deep into developing a new feature, and suddenly a critical bug needs immediate attention on a different branch. Without worktrees, you'd have to stash or commit your unfinished changes, switch branches, fix the bug, switch back, and then unstash/revert. This context switching is time-consuming and error-prone.
 
 ## What is a Worktree?
 
-A worktree is a linked working directory that allows you to have multiple branches of a single Git repository checked out *simultaneously*. Think of worktrees like having multiple desktops for your computer, each focused on a different task, but all accessing the same files. Each worktree has its own directory, but they all share the same `.git` repository data (history, objects, etc.).
+A worktree is a working directory with a .git folder (repository) that allows you to have multiple branches of a single Git repository checked out *simultaneously* to different subfolders. Think of worktrees like having multiple desktops for your computer, each focused on a different task, but all accessing the same files. Each worktree has its own directory, but they all share the same `.git` repository data (history, objects, etc.).
 
 This allows you to:
 - Work on multiple features simultaneously
@@ -65,21 +65,15 @@ git worktree prune
 
 ## Best Practices
 
-1. Create worktrees in a consistent location
-   - Consider creating a `worktrees` directory at the root of your project
-   - Example: `/path/to/project/worktrees/feature-x`
+0. Do not work in the worktree root directory. In the worktree root directory just checkout this `worktree` branch that only contains a README.
 
-2. Use meaningful directory names that correspond to your branches
+1. Use the branch name as the directory name. Use meaningful branch names.
    - Good: `../worktrees/feature-login`
    - Avoid: `../worktrees/temp1`
 
-3. Clean up worktrees when you're done with them
+2. Clean up worktrees when you're done with them
    - Always use `git worktree remove` instead of manually deleting directories
    - This ensures proper cleanup of Git's internal worktree metadata
-
-4. Remember that worktrees share the same Git history
-   - Changes (commits, branches) made in one worktree are immediately visible in all others
-   - Pulling updates in one worktree will make them available to all worktrees
 
 ## Common Issues and Solutions
 
@@ -109,55 +103,44 @@ git worktree prune
 
 ## Example Workflow
 
-1. **You're working on a feature in your main directory:**
+1. **You're starting working on a feature in a feature branch+directory:**
    ```bash
-   cd /path/to/your/main/repo
-   git checkout -b feature-new-ui  # You're already on a feature branch
+   cd /path/to/your/repo
+   git worktree add feature-new-ui feature-new-ui
+   cd feature-new-ui
    # ... make some changes ...
    ```
 
 2. **An urgent bug needs fixing:**
    ```bash
    # Create a worktree for the hotfix, based on the 'main' branch
-   git worktree add ../hotfix-urgent-bug main
-   cd ../hotfix-urgent-bug
+   git worktree add ../hotfix-login-bug main
+   cd ../hotfix-login-bug
 
    # Create a branch for the fix (best practice)
-   git checkout -b fix-login-issue
+   git checkout -b hotfix-login-bug
 
    # ... fix the bug ...
    git add .
    git commit -m "Fix: Login issue causing 500 error"
 
    # Push the fix to the remote repository
-   git push -u origin fix-login-issue
+   git push -u origin hotfix-login-bug
 
-   # (Optional) Create a pull request for the fix
+   # Create a pull request for the fix
+   gh pr create --base main --head hotfix-login-bug --title "Fix: Login issue causing 500 error" --body "This PR fixes the login issue causing a 500 error."
    ```
 
 3. **Return to your feature work:**
    ```bash
-   cd /path/to/your/main/repo
+   cd /path/to/your/repo
+   cd feature-new-ui
    # Continue working on your feature...
    ```
 
-4. **Merge the hotfix (after it's been reviewed and approved):**
+4. **Clean up the hotfix worktree:**
    ```bash
-   # This can be done in any worktree, but let's do it in the main repo
-   cd /path/to/your/main/repo
-   git checkout main
-   git pull  # Make sure you have the latest changes
-   git merge --no-ff fix-login-issue  # Merge the fix
-   git push
-
-   # (Optional) Delete the hotfix branch
-   git branch -d fix-login-issue
-   git push origin --delete fix-login-issue
-   ```
-
-5. **Clean up the hotfix worktree:**
-   ```bash
-   git worktree remove ../hotfix-urgent-bug
+   git worktree remove ../hotfix-login-bug
    ```
 
 ## Further Reading
