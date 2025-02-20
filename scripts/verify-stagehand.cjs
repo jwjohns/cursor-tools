@@ -15,11 +15,13 @@ function verifyStagehandScript() {
   const bundledScript = scriptMatch[1].replace(/\\n/g, '\n');
 
   // Read the original script from node_modules
-  const originalScriptPath = resolve(__dirname, '../node_modules/@browserbasehq/stagehand/lib/dom/build/index.js');
+  const originalScriptPath = resolve(__dirname, '../node_modules/@browserbasehq/stagehand/lib/dom/build/scriptContent.ts');
   const originalScript = readFileSync(originalScriptPath, 'utf8');
+  let originalScriptContent = originalScript.match(/export const scriptContent = "([\s\S]*)";/)[1];
+  originalScriptContent = originalScriptContent.replace(/\\n/g, '\n');
 
   // Compare the scripts
-  if (bundledScript.trim() !== originalScript.trim()) {
+  if (bundledScript.trim() !== originalScriptContent.trim()) {
     throw new Error(
       'Stagehand script mismatch detected!\n' +
       'The bundled script in src/commands/browser/stagehand/stagehandScript.ts does not match\n' +

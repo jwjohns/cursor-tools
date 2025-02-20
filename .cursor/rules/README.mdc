@@ -1,0 +1,11 @@
+---
+description: Rules for our README
+globs: README.md
+---
+Keep the table of contents At the top of the readme up to date whenever you make changes to the readme.
+
+To keep the README concise we put all the in depth configuration details into CONFIGURATION.md which is referenced from the README.
+
+
+We do not want to document dependencies in depth in the README
+We do not want to document any typescript APIs in the README. We only want to document the public surface which is the CLI, its commands and examples of how they can be used in Cursor.
