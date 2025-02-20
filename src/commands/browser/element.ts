@@ -22,7 +22,7 @@ export class ElementCommand implements Command {
     options = {
       ...options,
       network: options?.network === undefined ? true : options.network,
-      console: options?.console === undefined ? true : options.console
+      console: options?.console === undefined ? true : options.console,
     };
 
     try {

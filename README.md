@@ -431,7 +431,7 @@ Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
     "maxTokens": 8000
   },
   "gemini": {
-    "model": "gemini-2.0-pro-exp-02-05",
+    "model": "gemini-2.0-pro-exp",
     "maxTokens": 10000
   },
   "tokenCount": {

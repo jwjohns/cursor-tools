@@ -5,7 +5,13 @@ import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import { FileError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
-import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
+import {
+  GeminiProvider,
+  OpenAIProvider,
+  OpenRouterProvider,
+  PerplexityProvider,
+  ModelBoxProvider,
+} from '../providers/base';
 import { ModelNotFoundError } from '../errors';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 
@@ -22,7 +28,7 @@ export class RepoCommand implements Command {
       yield 'Packing repository using repomix...\n';
 
       try {
-        await pack(process.cwd(), {
+        const packResult = await pack(process.cwd(), {
           output: {
             ...outputOptions,
             filePath: '.repomix-output.txt',
@@ -41,6 +47,9 @@ export class RepoCommand implements Command {
           },
           cwd: process.cwd(),
         });
+        console.log(
+          `Packed repository. ${packResult.totalFiles} files. Approximate size ${packResult.totalTokens} tokens.`
+        );
       } catch (error) {
         throw new FileError('Failed to pack repository', error);
       }
@@ -143,9 +152,17 @@ export class RepoOpenRouterProvider extends OpenRouterProvider implements RepoMo
   analyzeRepository = RepoProviderMixin.analyzeRepository;
 }
 
+export class RepoPerplexityProvider extends PerplexityProvider implements RepoModelProvider {
+  analyzeRepository = RepoProviderMixin.analyzeRepository;
+}
+
+export class RepoModelBoxProvider extends ModelBoxProvider implements RepoModelProvider {
+  analyzeRepository = RepoProviderMixin.analyzeRepository;
+}
+
 // Factory function to create providers
 export function createRepoProvider(
-  provider: 'gemini' | 'openai' | 'openrouter'
+  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox'
 ): RepoModelProvider {
   switch (provider) {
     case 'gemini':
@@ -154,6 +171,10 @@ export function createRepoProvider(
       return new RepoOpenAIProvider();
     case 'openrouter':
       return new RepoOpenRouterProvider();
+    case 'perplexity':
+      return new RepoPerplexityProvider();
+    case 'modelbox':
+      return new RepoModelBoxProvider();
     default:
       throw new ModelNotFoundError(provider);
   }

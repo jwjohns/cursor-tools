@@ -1,6 +1,6 @@
 export type CommandGenerator = AsyncGenerator<string, void, unknown>;
 
-export type Provider = 'gemini' | 'openai' | 'openrouter';
+export type Provider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
 
 // Base options shared by all commands
 export interface CommandOptions {
@@ -35,9 +35,8 @@ export interface CommandMap {
 
 // Interface for the cursor-tools.config.json config file
 export interface Config {
-  perplexity: {
-    model: string;
-    apiKey?: string;
+  perplexity?: {
+    model?: string;
     maxTokens?: number;
   };
   plan?: {
@@ -72,5 +71,10 @@ export interface Config {
     verbose?: boolean;
     debugDom?: boolean;
     enableCaching?: boolean;
+  };
+  web?: {
+    provider?: Provider;
+    model?: string;
+    maxTokens?: number;
   };
 }

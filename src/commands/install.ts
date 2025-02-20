@@ -53,11 +53,19 @@ export class InstallCommand implements Command {
     const hasGemini = !!process.env.GEMINI_API_KEY;
     const hasOpenAI = !!process.env.OPENAI_API_KEY;
     const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
+    const hasOpenRouter = !!process.env.OPENROUTER_API_KEY;
+    const hasModelBox = !!process.env.MODELBOX_API_KEY;
 
     // For Stagehand, we need either OpenAI or Anthropic
     const hasStagehandProvider = hasOpenAI || hasAnthropic;
 
-    if (hasPerplexity && hasGemini && (hasStagehandProvider || process.env.SKIP_STAGEHAND)) {
+    if (
+      hasPerplexity &&
+      hasGemini &&
+      hasOpenRouter &&
+      hasModelBox &&
+      (hasStagehandProvider || process.env.SKIP_STAGEHAND)
+    ) {
       return;
     }
 
@@ -82,6 +90,8 @@ export class InstallCommand implements Command {
         GEMINI_API_KEY: process.env.GEMINI_API_KEY || '',
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
         ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY || '',
+        OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || '',
+        MODELBOX_API_KEY: process.env.MODELBOX_API_KEY || '',
         SKIP_STAGEHAND: process.env.SKIP_STAGEHAND || '',
       };
 
@@ -93,6 +103,19 @@ export class InstallCommand implements Command {
       if (!hasGemini) {
         const key = await getUserInput('Enter your Gemini API key (or press Enter to skip): ');
         keys.GEMINI_API_KEY = key;
+      }
+
+      if (!hasOpenRouter) {
+        yield '\nOpenRouter provides access to various AI models including Perplexity models.\n';
+        yield 'It can be used as an alternative to direct Perplexity access for web search.\n';
+        const key = await getUserInput('Enter your OpenRouter API key (or press Enter to skip): ');
+        keys.OPENROUTER_API_KEY = key;
+      }
+
+      if (!hasModelBox) {
+        yield '\nModelBox provides unified access to various AI models through an OpenAI-compatible API.\n';
+        const key = await getUserInput('Enter your ModelBox API key (or press Enter to skip): ');
+        keys.MODELBOX_API_KEY = key;
       }
 
       // Handle Stagehand setup

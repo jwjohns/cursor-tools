@@ -312,7 +312,9 @@ export function overrideStagehandInit() {
         this.logger
       ).catch((e) => {
         console.error('Error initializing browser:', e);
-        throw new Error(`Failed to initialize browser: ${e instanceof Error ? e.message : 'Unknown error'}`);
+        throw new Error(
+          `Failed to initialize browser: ${e instanceof Error ? e.message : 'Unknown error'}`
+        );
       });
 
       this['intEnv'] = browserResult.env;

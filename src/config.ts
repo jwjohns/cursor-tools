@@ -1,31 +1,26 @@
 import type { Config } from './types';
 
 export const defaultConfig: Config = {
-  perplexity: {
-    model: 'sonar-pro',
-    maxTokens: 4000,
+  web: {
+    provider: 'perplexity',
   },
   plan: {
     fileProvider: 'gemini',
-    thinkingProvider: 'openrouter',
+    thinkingProvider: 'perplexity',
     fileModel: 'gemini-2.0-pro-exp',
-    thinkingModel: 'deepseek/deepseek-r1',
+    thinkingModel: 'sonar-reasoning-pro',
     fileMaxTokens: 8192,
     thinkingMaxTokens: 8192,
   },
   repo: {
-    provider: 'gemini',
-    model: 'gemini-2.0-flash-thinking-exp',
+    provider: 'perplexity',
+    model: 'sonar-reasoning-pro',
     maxTokens: 10000,
   },
   doc: {
     maxRepoSizeMB: 100,
-    provider: 'gemini',
-    model: 'gemini-2.0-pro-exp',
+    provider: 'perplexity',
     maxTokens: 10000,
-  },
-  tokenCount: {
-    encoding: 'o200k_base',
   },
   browser: {
     headless: true,
@@ -33,18 +28,35 @@ export const defaultConfig: Config = {
     timeout: 120000,
   },
   stagehand: {
-    provider: 'openai',
+    provider: 'anthropic',
     verbose: false,
     debugDom: false,
     enableCaching: true,
   },
+  tokenCount: {
+    encoding: 'o200k_base',
+  },
+  perplexity: {
+    model: 'sonar-pro',
+    maxTokens: 8000,
+  },
+
   // Note that it is also permitted to add provider-specific config options
   // in the config file, even though they are not shown in this interface.
   // command specific configuration always overrides the provider specific
   // configuration
+  //   modelbox: {
+  //     model: 'google/gemini-2.0-flash', // Default model, can be overridden per command
+  //     maxTokens: 8192,
+  //  },
+  //  openrouter: {
+  //   model: 'google/gemini-2.0-pro-exp-02-05:free'
+  //   }
+  //
+  //  or
   //
   //   "gemini": {
-  //     "model": "gemini-2.0-pro-exp-02-05",
+  //     "model": "gemini-2.0-pro-exp",
   //     "maxTokens": 10000
   //   }
   //

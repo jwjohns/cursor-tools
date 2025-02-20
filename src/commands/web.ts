@@ -1,9 +1,16 @@
 import type { Command, CommandGenerator, CommandOptions } from '../types.ts';
 import type { Config } from '../types.ts';
 import { loadConfig, loadEnv } from '../config.ts';
-import { createEventSource } from 'eventsource-client';
+import { createProvider } from '../providers/base';
+import { ProviderError } from '../errors';
 
-const MAX_RETRIES = 2;
+// Default models that support web search for each provider
+const DEFAULT_WEB_MODELS = {
+  perplexity: 'sonar-pro',
+  openrouter: 'perplexity/sonar',
+  modelbox: 'perplexity/sonar',
+  gemini: 'gemini-2.0-pro-exp',
+} as const;
 
 export class WebCommand implements Command {
   private config: Config;
@@ -13,134 +20,88 @@ export class WebCommand implements Command {
     this.config = loadConfig();
   }
 
-  private async *fetchPerplexityResponse(
-    query: string,
-    options?: CommandOptions
-  ): AsyncGenerator<string, void, unknown> {
-    const apiKey = process.env.PERPLEXITY_API_KEY;
-    if (!apiKey) {
-      throw new Error('PERPLEXITY_API_KEY environment variable is not set');
-    }
-
-    let maxRetriesReached = false;
-    let someMessageReceived = false;
-    let endMessageReceived = false;
-
-    let fetchAttempts = 0;
-    const es = createEventSource({
-      url: 'https://api.perplexity.ai/chat/completions',
-      onDisconnect: () => {
-        if (endMessageReceived) {
-          return;
-        }
-        if (someMessageReceived) {
-          // This is supposed to happen but perplexity doesn't always send a finish_reason so we have to assume it's the end of the stream
-          // this is not ideal because it could be a network problem we should retry
-          console.error(
-            '\nPerplexity disconnected without sending a finish_reason, we will close the connection'
-          );
-          es.close();
-        } else {
-          // no messages were received so we should retry
-          console.error(
-            `\nConnection disconnected without recieving any messages, we will retry ${MAX_RETRIES} times (attempt ${fetchAttempts})`
-          );
-          es.close();
-        }
-      },
-      fetch: async (url, init) => {
-        if (fetchAttempts++ > MAX_RETRIES) {
-          maxRetriesReached = true;
-          console.error('\nMax retries reached. Giving up.');
-          // we're going to fake a response to stop the event source from trying to reconnect
-          return {
-            body: null,
-            url: url.toString(),
-            status: 204,
-            redirected: false,
-          };
-        }
-        const response = await fetch(url, {
-          ...init,
-          method: 'POST',
-          headers: {
-            ...(init?.headers || {}),
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json',
-            Accept: 'application/json',
-          },
-          body: JSON.stringify({
-            model: options?.model || this.config.perplexity.model,
-            messages: [
-              {
-                role: 'system',
-                content:
-                  'Search the web to produce answers to questions. Your responses are for an automated system and should be precise, specific and concise. Avoid unnecessary chat and formatting. Include code and examples.',
-              },
-              {
-                role: 'user',
-                content: query,
-              },
-            ],
-            stream: true,
-            max_tokens: options?.maxTokens || this.config.perplexity.maxTokens,
-          }),
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('Perplexity API error', errorText);
-          throw new Error(`API Error (${response.status}): ${errorText}`);
-        }
-
-        return response;
-      },
-    });
-
-    try {
-      for await (const { data, event } of es) {
-        try {
-          const json = JSON.parse(data);
-          const content = json.choices[0]?.delta?.content;
-          if (content !== undefined) {
-            someMessageReceived = true;
-            yield content;
-          }
-          if ('finish_reason' in json.choices[0] && !!json.choices[0].finish_reason) {
-            endMessageReceived = true;
-            if (json.citations && json.citations.length > 0) {
-              yield '\n\ncitations:\n' +
-                json.citations?.map((c: any, i: number) => `${i + 1}. ${c}`).join('\n');
-            }
-            break;
-          }
-          if (event?.toLowerCase() === 'end' || event?.toLowerCase() === 'done') {
-            endMessageReceived = true;
-            break;
-          }
-        } catch (e) {
-          console.error('Error parsing event data:', e);
-          throw e;
-        }
-        if (maxRetriesReached) {
-          break;
-        }
-      }
-    } finally {
-      es.close();
-    }
-  }
-
   async *execute(query: string, options?: CommandOptions): CommandGenerator {
     try {
-      const model = options?.model || this.config.perplexity.model;
-      yield `Querying Perplexity AI using ${model} for: ${query}\n`;
-      yield* this.fetchPerplexityResponse(query, options);
+      const provider = options?.provider || this.config.web?.provider || 'perplexity';
+
+      let model =
+        options?.model ||
+        this.config.web?.model ||
+        (this.config as Record<string, any>)[provider]?.model ||
+        DEFAULT_WEB_MODELS[provider as keyof typeof DEFAULT_WEB_MODELS];
+
+      // Validate provider supports web search
+      if (!model) {
+        throw new ProviderError(
+          `Provider ${provider} does not support web search. Please use one of: ${Object.keys(DEFAULT_WEB_MODELS).join(', ')}`
+        );
+      }
+
+      // Check web search capability
+      const modelProvider = createProvider(provider);
+      const SAFETY_OVERRIDE = process.env.OVERRIDE_SAFETY_CHECKS?.toLowerCase();
+      const isOverridden = SAFETY_OVERRIDE === 'true' || SAFETY_OVERRIDE === '1';
+
+      const webSearchSupport = modelProvider.supportsWebSearch(model);
+      if (!isOverridden && !webSearchSupport.supported) {
+        if (webSearchSupport.model) {
+          console.log(`Using ${webSearchSupport.model} instead of ${model} for web search`);
+          model = webSearchSupport.model;
+        } else {
+          throw new ProviderError(
+            `${webSearchSupport.error}\n\n` +
+              `Please use one of these providers/models that support web search:\n` +
+              `- Gemini (e.g. gemini-2.0-flash or gemini-2.0-pro-exp)\n` +
+              `- Perplexity (e.g. sonar, sonar-pro, sonar-reasoning, sonar-reasoning-pro)\n` +
+              `- OpenRouter (e.g. perplexity/sonar)\n` +
+              `- ModelBox (e.g. perplexity/sonar)\n\n` +
+              `Available default models:\n` +
+              Object.entries(DEFAULT_WEB_MODELS)
+                .map(([p, m]) => `- ${p}: ${m}`)
+                .join('\n') +
+              `\n\nOr set OVERRIDE_SAFETY_CHECKS=true to bypass this check (not recommended)`
+          );
+        }
+      }
+
+      if (
+        isOverridden &&
+        (!webSearchSupport.supported ||
+          (webSearchSupport.model && model !== webSearchSupport.model))
+      ) {
+        console.log(
+          `Warning: Web search compatibility check bypassed via OVERRIDE_SAFETY_CHECKS.\n` +
+            `Using ${model} instead of ${webSearchSupport.model} for web search.\n` +
+            `This may result in errors or unexpected behavior.`
+        );
+      }
+
+      const maxTokens =
+        options?.maxTokens ||
+        this.config.web?.maxTokens ||
+        (this.config as Record<string, any>)[provider]?.maxTokens ||
+        4000;
+
+      yield `Querying ${provider} using ${model} for: ${query} with maxTokens: ${maxTokens}\n`;
+
+      const response = await modelProvider.executePrompt(query, {
+        model,
+        maxTokens,
+        webSearch: true,
+      });
+
+      yield response;
     } catch (error) {
       if (error instanceof Error) {
         yield `Error: ${error.message}`;
+        if (options?.debug) {
+          console.error('Detailed error:', error);
+        }
       } else {
         yield 'An unknown error occurred';
+        if (options?.debug) {
+          console.error('Unknown error:', error);
+        }
       }
     }
   }

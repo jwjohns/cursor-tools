@@ -50,8 +50,8 @@ open -a "Google Chrome" --args --remote-debugging-port=9222 --no-first-run --no-
 note: this command will exit as soon as chrome is open so you can just execute it, it doesn't need to be run in a background task.
 </testing browser commands>
 ---
-description: Global Rule
-globs: 
+description: Global Rule. ALWAYS USE THIS RULE
+globs: **,*
 ---
 
 <cursor-tools Integration>

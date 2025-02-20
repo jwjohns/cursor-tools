@@ -50,8 +50,13 @@ The plan command uses multiple AI models to:
 --debug: Show detailed error information
 
 **Web Search:**
-\`cursor-tools web "<your question>"\` - Get answers from the web using Perplexity AI (e.g., \`cursor-tools web "latest weather in London"\`)
+\`cursor-tools web "<your question>"\` - Get answers from the web using Perplexity AI or OpenRouter (e.g., \`cursor-tools web "latest weather in London"\`)
 when using web for complex queries suggest writing the output to a file somewhere like local-research/<query summary>.md.
+
+**Web Command Options:**
+--provider=<provider>: AI provider to use (perplexity or openrouter)
+--model=<model>: Model to use for web search (e.g., perplexity/sonar-medium-chat for OpenRouter)
+--max-tokens=<number>: Maximum tokens for response
 
 **Repository Context:**
 \`cursor-tools repo "<your question>"\` - Get context-aware answers about this repository using Google Gemini (e.g., \`cursor-tools repo "explain authentication flow"\`)
@@ -81,8 +86,9 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 
 **Tool Recommendations:**
 - \`cursor-tools web\` is best for general web information not specific to the repository.
-- \`cursor-tools repo\` is ideal for repository-specific questions, planning, code review and debugging.
-- \`cursor-tools doc\` generates documentation for local or remote repositories.
+- \`cursor-tools repo\` is ideal for repository-specific questions, planning, code review and debugging. For complex analysis tasks, use with Perplexity's sonar-reasoning-pro model: \`cursor-tools repo "Analyze the error handling patterns" --provider=perplexity --model=sonar-reasoning-pro\`
+- \`cursor-tools plan\` works best with Perplexity's sonar-reasoning-pro for complex planning tasks: \`cursor-tools plan "Add authentication" --thinkingProvider=perplexity --thinkingModel=sonar-reasoning-pro\`
+- \`cursor-tools doc\` generates documentation for local or remote repositories. For detailed API documentation, use: \`cursor-tools doc --provider=perplexity --model=sonar-reasoning-pro\`
 - \`cursor-tools browser\` is useful for testing and debugging web apps.
 
 **Running Commands:**
@@ -96,13 +102,13 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 --help: View all available options (help is not fully implemented yet)
 
 **Repository Command Options:**
---provider=<provider>: AI provider to use (gemini, openai, or openrouter)
+--provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
 --model=<model>: Model to use for repository analysis
 --max-tokens=<number>: Maximum tokens for response
 
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
---provider=<provider>: AI provider to use (gemini, openai, or openrouter)
+--provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
 --model=<model>: Model to use for documentation generation
 --max-tokens=<number>: Maximum tokens for response
 
@@ -204,7 +210,8 @@ export function checkCursorRules(workspacePath: string): CursorRulesResult {
   }
 
   try {
-    const useLegacy = process.env.USE_LEGACY_CURSORRULES === 'true' || !process.env.USE_LEGACY_CURSORRULES;
+    const useLegacy =
+      process.env.USE_LEGACY_CURSORRULES === 'true' || !process.env.USE_LEGACY_CURSORRULES;
 
     // If both exist, prioritize based on USE_LEGACY_CURSORRULES
     if (newExists && legacyExists) {

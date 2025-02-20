@@ -44,7 +44,8 @@ All notable changes to this project will be documented in this file.
     - `--thinkingModel`: Model to use for plan generation
     - `--fileMaxTokens`: Maximum tokens for file identification
     - `--thinkingMaxTokens`: Maximum tokens for plan generation
-- Improved provider system with enhanced error handling and configuration:
+- Brand new provider system with enhanced error handling and configuration:
+  - Added OpenRouter provider
   - New provider interfaces for specialized tasks
   - Shared implementations via provider mixins
   - Better error messages and debugging support

@@ -388,7 +388,7 @@ async function main() {
       } else {
         writePromise = Promise.resolve();
       }
-      
+
       if (options.saveTo) {
         try {
           await fsPromises.appendFile(options.saveTo, output);

@@ -3,14 +3,20 @@ import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
-import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
+import {
+  GeminiProvider,
+  OpenAIProvider,
+  OpenRouterProvider,
+  PerplexityProvider,
+  ModelBoxProvider,
+} from '../providers/base';
 import { FileError, ProviderError } from '../errors';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 
 // Plan-specific options interface
 interface PlanCommandOptions extends CommandOptions {
-  fileProvider?: 'gemini' | 'openai' | 'openrouter';
-  thinkingProvider?: 'gemini' | 'openai' | 'openrouter';
+  fileProvider?: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
+  thinkingProvider?: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
   fileModel?: string;
   thinkingModel?: string;
 }
@@ -22,7 +28,9 @@ export interface PlanModelProvider extends BaseModelProvider {
 }
 
 // Factory function to create plan providers
-function createPlanProvider(provider: 'gemini' | 'openai' | 'openrouter'): PlanModelProvider {
+function createPlanProvider(
+  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox'
+): PlanModelProvider {
   switch (provider) {
     case 'gemini':
       return new PlanGeminiProvider();
@@ -30,6 +38,10 @@ function createPlanProvider(provider: 'gemini' | 'openai' | 'openrouter'): PlanM
       return new PlanOpenAIProvider();
     case 'openrouter':
       return new PlanOpenRouterProvider();
+    case 'perplexity':
+      return new PlanPerplexityProvider();
+    case 'modelbox':
+      return new PlanModelBoxProvider();
     default:
       throw new Error(`Unknown provider: ${provider}`);
   }
@@ -291,6 +303,16 @@ export class PlanOpenAIProvider extends OpenAIProvider implements PlanModelProvi
 }
 
 export class PlanOpenRouterProvider extends OpenRouterProvider implements PlanModelProvider {
+  getRelevantFiles = PlanProviderMixin.getRelevantFiles;
+  generatePlan = PlanProviderMixin.generatePlan;
+}
+
+export class PlanPerplexityProvider extends PerplexityProvider implements PlanModelProvider {
+  getRelevantFiles = PlanProviderMixin.getRelevantFiles;
+  generatePlan = PlanProviderMixin.generatePlan;
+}
+
+export class PlanModelBoxProvider extends ModelBoxProvider implements PlanModelProvider {
   getRelevantFiles = PlanProviderMixin.getRelevantFiles;
   generatePlan = PlanProviderMixin.generatePlan;
 }

@@ -4,9 +4,15 @@ import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import { FileError, NetworkError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
-import { GeminiProvider, OpenAIProvider, OpenRouterProvider } from '../providers/base';
+import {
+  GeminiProvider,
+  OpenAIProvider,
+  OpenRouterProvider,
+  PerplexityProvider,
+} from '../providers/base';
 import { ModelNotFoundError } from '../errors';
 import { ignorePatterns, includePatterns } from '../repomix/repomixConfig';
+import { ModelBoxProvider } from '../providers/base';
 
 interface DocCommandOptions extends CommandOptions {
   model?: string;
@@ -14,7 +20,7 @@ interface DocCommandOptions extends CommandOptions {
   fromGithub?: string;
   hint?: string;
   debug?: boolean;
-  provider?: 'gemini' | 'openai' | 'openrouter';
+  provider?: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
 }
 
 export class DocCommand implements Command {
@@ -360,8 +366,18 @@ export class DocOpenRouterProvider extends OpenRouterProvider implements DocMode
   generateDocumentation = DocProviderMixin.generateDocumentation;
 }
 
+export class DocPerplexityProvider extends PerplexityProvider implements DocModelProvider {
+  generateDocumentation = DocProviderMixin.generateDocumentation;
+}
+
+export class DocModelBoxProvider extends ModelBoxProvider implements DocModelProvider {
+  generateDocumentation = DocProviderMixin.generateDocumentation;
+}
+
 // Factory function to create providers
-export function createDocProvider(provider: 'gemini' | 'openai' | 'openrouter'): DocModelProvider {
+export function createDocProvider(
+  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox'
+): DocModelProvider {
   switch (provider) {
     case 'gemini':
       return new DocGeminiProvider();
@@ -369,6 +385,10 @@ export function createDocProvider(provider: 'gemini' | 'openai' | 'openrouter'):
       return new DocOpenAIProvider();
     case 'openrouter':
       return new DocOpenRouterProvider();
+    case 'perplexity':
+      return new DocPerplexityProvider();
+    case 'modelbox':
+      return new DocModelBoxProvider();
     default:
       throw new ModelNotFoundError(provider);
   }
