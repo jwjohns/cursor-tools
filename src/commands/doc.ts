@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator, CommandOptions, Config, Provider } from '../types';
-import { loadConfig, loadEnv } from '../config';
+import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import { FileError, NetworkError, ProviderError } from '../errors';
@@ -253,7 +253,7 @@ Please:
         switch (provider) {
           case 'gemini':
             if (tokenCount < 800_000) {
-              // 1M is the limit but token counts are very approximate so play it save
+              // 1M is the limit but token counts are very approximate so play it safe
               return 'gemini-2.0-flash-thinking-exp';
             }
             return 'gemini-2.0-pro-exp';
@@ -261,8 +261,8 @@ Please:
             return 'o3-mini';
           case 'openrouter':
             if (tokenCount < 150_000) {
-              // 200k is the limit but token counts are very approximate so play it save
-              return 'anthropic/claude-3-5-sonnet';
+              // 200k is the limit but token counts are very approximate so play it safe
+              return 'anthropic/claude-3.5-sonnet'; // its 3.5 on openrouter
             }
             if (tokenCount < 800_000) {
               return 'google/gemini-2.0-flash-thinking-exp:free';
@@ -272,8 +272,8 @@ Please:
             return 'sonar-pro';
           case 'modelbox':
             if (tokenCount < 150_000) {
-              // 200k is the limit but token counts are very approximate so play it save
-              return 'anthropic/claude-3-5-sonnet';
+              // 200k is the limit but token counts are very approximate so play it safe
+              return 'anthropic/claude-3-5-sonnet'; // its 3.5 on modelbox
             }
             return 'google/gemini-2.0-flash-thinking';
           default:
@@ -283,22 +283,13 @@ Please:
 
       // Add provider-specific token limits
       const getMaxTokens = (provider: Provider, requestedTokens?: number) => {
-        const defaultTokens = {
-          gemini: 10000,
-          openai: 4096,
-          openrouter: 4096,
-          perplexity: 4096,
-          modelbox: 8192,
-        };
-
         const maxTokens =
           requestedTokens ||
           this.config.doc?.maxTokens ||
           (this.config as Record<string, any>)[provider]?.maxTokens ||
-          defaultTokens[provider];
+          defaultMaxTokens;
 
-        // Ensure we don't exceed provider limits
-        return Math.min(maxTokens, defaultTokens[provider]);
+        return maxTokens;
       };
 
       const model =
@@ -359,7 +350,7 @@ async function generateDocumentation(
   query: string,
   provider: BaseModelProvider,
   repoContext: { text: string; tokenCount: number },
-  options?: ModelOptions
+  options: Omit<ModelOptions, 'systemPrompt'>
 ): Promise<string> {
   const userInstructions = query ? `User Instructions:\n${query}` : '';
   const prompt = `

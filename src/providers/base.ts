@@ -31,9 +31,9 @@ interface GeminiGroundingMetadata {
 
 // Common options for all providers
 export interface ModelOptions {
-  model?: string;
-  maxTokens?: number;
-  systemPrompt?: string;
+  model: string;
+  maxTokens: number;
+  systemPrompt: string;
   tokenCount?: number; // For handling large token counts
   webSearch?: boolean; // Whether to enable web search capabilities
   timeout?: number; // Timeout in milliseconds for model API calls
@@ -72,10 +72,6 @@ export abstract class BaseProvider implements BaseModelProvider {
     return options.model;
   }
 
-  protected getMaxTokens(options: ModelOptions | undefined): number {
-    return options?.maxTokens || 4000; // Default to 4000 if not specified
-  }
-
   protected getSystemPrompt(options?: ModelOptions): string | undefined {
     return (
       options?.systemPrompt || 'You are a helpful assistant. Provide clear and concise responses.'
@@ -87,7 +83,7 @@ export abstract class BaseProvider implements BaseModelProvider {
   }
 
   abstract supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string };
-  abstract executePrompt(prompt: string, options?: ModelOptions): Promise<string>;
+  abstract executePrompt(prompt: string, options: ModelOptions): Promise<string>;
 }
 
 // Helper function for exponential backoff retry
@@ -156,7 +152,7 @@ export class GeminiProvider extends BaseProvider {
     };
   }
 
-  async executePrompt(prompt: string, options?: ModelOptions): Promise<string> {
+  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       throw new ApiKeyMissingError('Gemini');
@@ -177,7 +173,7 @@ export class GeminiProvider extends BaseProvider {
         }
 
         const model = this.getModel(finalOptions);
-        const maxTokens = this.getMaxTokens(finalOptions);
+        const maxTokens = finalOptions.maxTokens;
 
         try {
           const requestBody: any = {
@@ -341,9 +337,9 @@ abstract class OpenAIBase extends BaseProvider {
     };
   }
 
-  async executePrompt(prompt: string, options?: ModelOptions): Promise<string> {
+  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
     const model = this.getModel(options);
-    const maxTokens = this.getMaxTokens(options);
+    const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
 
     try {
@@ -389,9 +385,9 @@ export class OpenAIProvider extends OpenAIBase {
     };
   }
 
-  async executePrompt(prompt: string, options?: ModelOptions): Promise<string> {
+  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
     const model = this.getModel(options);
-    const maxTokens = this.getMaxTokens(options);
+    const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
     const messageLimit = 1048576; // OpenAI's character limit
 
@@ -454,9 +450,9 @@ export class OpenRouterProvider extends OpenAIBase {
     });
   }
 
-  async executePrompt(prompt: string, options?: ModelOptions): Promise<string> {
+  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
     const model = this.getModel(options);
-    const maxTokens = this.getMaxTokens(options);
+    const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
     console.log(
       `OpenRouter Provider: Executing prompt with model: ${model}, maxTokens: ${maxTokens}`
@@ -516,7 +512,7 @@ export class PerplexityProvider extends BaseProvider {
     };
   }
 
-  async executePrompt(prompt: string, options?: ModelOptions): Promise<string> {
+  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
     const apiKey = process.env.PERPLEXITY_API_KEY;
     if (!apiKey) {
       throw new ApiKeyMissingError('Perplexity');
@@ -525,7 +521,7 @@ export class PerplexityProvider extends BaseProvider {
     return retryWithBackoff(
       async () => {
         const model = this.getModel(options);
-        const maxTokens = this.getMaxTokens(options);
+        const maxTokens = options.maxTokens;
         const systemPrompt = this.getSystemPrompt(options);
 
         try {

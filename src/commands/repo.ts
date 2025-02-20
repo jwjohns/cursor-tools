@@ -1,6 +1,6 @@
 import type { Command, CommandGenerator, CommandOptions } from '../types';
 import type { Config } from '../types';
-import { loadConfig, loadEnv } from '../config';
+import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import { FileError, ProviderError } from '../errors';
@@ -18,7 +18,7 @@ export class RepoCommand implements Command {
 
   async *execute(query: string, options?: CommandOptions): CommandGenerator {
     try {
-      yield 'Packing repository using repomix...\n';
+      yield 'Packing repository using Repomix...\n';
 
       try {
         const packResult = await pack(process.cwd(), {
@@ -72,7 +72,8 @@ export class RepoCommand implements Command {
       const maxTokens =
         options?.maxTokens ||
         this.config.repo?.maxTokens ||
-        (this.config as Record<string, any>)[providerName]?.maxTokens;
+        (this.config as Record<string, any>)[providerName]?.maxTokens ||
+        defaultMaxTokens;
 
       if (!model) {
         throw new ProviderError(`No model specified for ${providerName}`);
@@ -83,6 +84,8 @@ export class RepoCommand implements Command {
         const response = await analyzeRepository(provider, query, repoContext, cursorRules, {
           model,
           maxTokens,
+          systemPrompt:
+            "You are an expert software developer analyzing a repository. Follow user instructions exactly and satisfy the user's request.",
         });
         yield response;
       } catch (error) {
@@ -110,9 +113,5 @@ async function analyzeRepository(
   cursorRules: string,
   options?: ModelOptions
 ): Promise<string> {
-  return provider.executePrompt(`${cursorRules}\n\n${repoContext}\n\n${query}`, {
-    ...options,
-    systemPrompt:
-      "You are an expert software developer analyzing a repository. Follow user instructions exactly and satisfy the user's request.",
-  });
+  return provider.executePrompt(`${cursorRules}\n\n${repoContext}\n\n${query}`, options);
 }

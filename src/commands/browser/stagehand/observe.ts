@@ -77,7 +77,9 @@ export class ObserveCommand implements Command {
         console: options?.console === undefined ? true : options.console,
       };
 
-      console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+      if (options?.debug) {
+        console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+      }
       stagehand = new Stagehand(config);
 
       await using _stagehand = {
@@ -128,10 +130,14 @@ export class ObserveCommand implements Command {
             );
             await Promise.race([gotoPromise, gotoTimeoutPromise]);
           } else {
-            console.log('Skipping navigation - already on correct page');
+            if (options?.debug) {
+              console.log('Skipping navigation - already on correct page');
+            }
           }
         } else {
-          console.log('Skipping navigation - using current page');
+          if (options?.debug) {
+            console.log('Skipping navigation - using current page');
+          }
         }
 
         // Execute custom JavaScript if provided

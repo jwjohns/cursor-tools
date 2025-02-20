@@ -1,5 +1,9 @@
 import type { Config } from './types';
 
+// 8000 is the max tokens for the perplexity models
+// most openai and anthropic models are 8192
+// so we just use 8000 for all the defaults so people have a fighting chance of not hitting the limits
+export const defaultMaxTokens = 8000;
 export const defaultConfig: Config = {
   web: {
     provider: 'perplexity',
@@ -7,17 +11,17 @@ export const defaultConfig: Config = {
   plan: {
     fileProvider: 'gemini',
     thinkingProvider: 'perplexity',
-    fileMaxTokens: 8192,
-    thinkingMaxTokens: 8192,
+    fileMaxTokens: defaultMaxTokens,
+    thinkingMaxTokens: defaultMaxTokens,
   },
   repo: {
     provider: 'gemini',
-    maxTokens: 10000,
+    maxTokens: defaultMaxTokens,
   },
   doc: {
     maxRepoSizeMB: 100,
     provider: 'perplexity',
-    maxTokens: 10000,
+    maxTokens: defaultMaxTokens,
   },
   browser: {
     headless: true,
@@ -35,7 +39,7 @@ export const defaultConfig: Config = {
   },
   perplexity: {
     model: 'sonar-pro',
-    maxTokens: 8000,
+    maxTokens: defaultMaxTokens,
   },
 
   // Note that it is also permitted to add provider-specific config options

@@ -43,14 +43,14 @@ The plan command uses multiple AI models to:
 3. Generate a detailed implementation plan
 
 **Plan Command Options:**
---fileProvider=<provider>: Provider for file identification (gemini, openai, or openrouter)
---thinkingProvider=<provider>: Provider for plan generation (gemini, openai, or openrouter)
+--fileProvider=<provider>: Provider for file identification (gemini, openai, anthropic, perplexity, or openrouter)
+--thinkingProvider=<provider>: Provider for plan generation (gemini, openai, anthropic, perplexity, or openrouter)
 --fileModel=<model>: Model to use for file identification
 --thinkingModel=<model>: Model to use for plan generation
 --debug: Show detailed error information
 
 **Web Search:**
-\`cursor-tools web "<your question>"\` - Get answers from the web using Perplexity AI or OpenRouter (e.g., \`cursor-tools web "latest weather in London"\`)
+\`cursor-tools web "<your question>"\` - Get answers from the web using a provider that supports web search (e.g., Perplexity models and Gemini Models either directly or from OpenRouter or ModelBox) (e.g., \`cursor-tools web "latest shadcn/ui installation instructions"\`)
 when using web for complex queries suggest writing the output to a file somewhere like local-research/<query summary>.md.
 
 **Web Command Options:**
@@ -85,18 +85,19 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 - DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.
 
 **Tool Recommendations:**
-- \`cursor-tools web\` is best for general web information not specific to the repository.
-- \`cursor-tools repo\` is ideal for repository-specific questions, planning, code review and debugging. For complex analysis tasks, use with Perplexity's sonar-reasoning-pro model: \`cursor-tools repo "Analyze the error handling patterns" --provider=perplexity --model=sonar-reasoning-pro\`
-- \`cursor-tools plan\` works best with Perplexity's sonar-reasoning-pro for complex planning tasks: \`cursor-tools plan "Add authentication" --thinkingProvider=perplexity --thinkingModel=sonar-reasoning-pro\`
-- \`cursor-tools doc\` generates documentation for local or remote repositories. For detailed API documentation, use: \`cursor-tools doc --provider=perplexity --model=sonar-reasoning-pro\`
-- \`cursor-tools browser\` is useful for testing and debugging web apps.
+- \`cursor-tools web\` is best for general web information not specific to the repository
+- \`cursor-tools repo\` is ideal for repository-specific questions, planning, code review and debugging. E.g. \`cursor-tools repo "Review recent changes to command error handling looking for mistakes, omissions and improvements"
+- \`cursor-tools plan\` is ideal for planning tasks. E.g. \`cursor-tools plan "Adding authentication with social login using Google and Github"\`
+- \`cursor-tools doc\` generates documentation for local or remote repositories
+- \`cursor-tools browser\` is useful for testing and debugging web apps and uses Stagehand
 
 **Running Commands:**
 1. **Installed version:** Use \`cursor-tools <command>\` (if in PATH) or \`npm exec cursor-tools "<command>"\`, \`yarn cursor-tools "<command>"\`, \`pnpm cursor-tools "<command>"\`.
 2. **Without installation:** Use \`npx -y cursor-tools@latest "<command>"\` or \`bunx -y cursor-tools@latest "<command>"\`.
 
 **General Command Options (Supported by all commands):**
---model=<model name>: Specify an alternative AI model to use.
+--provider=<provider>: AI provider to use (openai, anthropic, perplexity, gemini, or openrouter). If provider is not specified, the default provider for that task will be used.
+--model=<model name>: Specify an alternative AI model to use. If model is not specified, the provider's default model for that task will be used.
 --max-tokens=<number>: Control response length
 --save-to=<file path>: Save command output to a file (in *addition* to displaying it)
 --help: View all available options (help is not fully implemented yet)
@@ -127,6 +128,8 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 --connect-to=<port>: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
 --wait=<time:duration or selector:css-selector>: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
 --video=<directory>: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
+--url=<url>: Required for \`act\`, \`observe\`, and \`extract\` commands. Url to navigate to before the main command or one of the special values 'current' (to stay on the current page without navigating or reloading) or 'reload-current' (to reload the current page)
+--evaluate=<string>: JavaScript code to execute in the browser before the main command
 
 **Nicknames**
 Users can ask for these tools using nicknames
@@ -138,7 +141,7 @@ Stagehand is a nickname for cursor-tools browser
 - For detailed information, see \`node_modules/cursor-tools/README.md\` (if installed locally).
 - Configuration is in \`cursor-tools.config.json\` (or \`~/.cursor-tools/config.json\`).
 - API keys are loaded from \`.cursor-tools.env\` (or \`~/.cursor-tools/.env\`).
-- Browser commands require separate installation of Playwright: \`npm install --save-dev playwright\` or \`npm install -g playwright\`.
+- Browser commands require separate installation of Playwright: \`npm install --global playwright\` or \`npm install -g playwright\`.
 - The default Stagehand model is set in \`cursor-tools.config.json\`, but can be overridden with the \`--model\` option.
 - Available models depend on your configured provider (OpenAI or Anthropic) in \`cursor-tools.config.json\`.
 - repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.

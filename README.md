@@ -4,6 +4,32 @@
 
 <div align=center><h1>Give Cursor Agent an AI team and advanced skills</h1></div>
 
+## Table of Contents
+- [The AI Team](#the-ai-team)
+- [New Skills](#new-skills-for-your-existing-agent)
+- [How to Use](#how-do-i-use-it)
+  - [Example: Using Perplexity](#asking-perplexity-to-carry-out-web-research)
+  - [Example: Using Gemini](#asking-gemini-for-a-plan)
+- [What is cursor-tools](#what-is-cursor-tools)
+- [Installation](#installation)
+- [Requirements](#requirements)
+- [Tips](#tips)
+- [Additional Examples](#additional-examples)
+  - [GitHub Skills](#github-skills)
+  - [Gemini Code Review](#gemini-code-review)
+- [Detailed Cursor Usage](#detailed-cursor-usage)
+  - [Command Nicknames](#command-nicknames)
+  - [Tool Recommendations](#tool-recommendations)
+  - [Web Search](#use-web-search)
+  - [Repository Search](#use-repo-search)
+  - [Documentation Generation](#use-doc-generation)
+  - [GitHub Integration](#use-github-integration)
+  - [Browser Command Examples](#browser-command-examples)
+- [Node Package Manager](#node-package-manager-npm)
+- [Contributing](#contributing)
+- [Sponsors](#sponsors)
+- [License](#license)
+
 ### The AI Team
 - Perplexity to search the web and perform deep research
 - Gemini 2.0 for huge whole-codebase context window, search grounding and reasoning
@@ -135,7 +161,22 @@ See cursor get approximately 5x more work done per-prompt with Gemini code revie
 
 Use Cursor Composer in agent mode with command execution (not sure what this means, see section below on Cursor Agent configuration). If you have installed the cursor-tools prompt to your .cursorrules (or equivalent) just ask your AI coding agent/assistant to use "cursor-tools" to do things.
 
-Examples usages:
+
+### Tool Recommendations
+- `cursor-tools web` uses an AI teammate with web search capability to answer questions. `web` is best for finding up-to-date information from the web that is not specific to the repository such as how to use a library to search for known issues and error messages or to get suggestions on how to do something. Web is a teammate who knows tons of stuff and is always up to date.
+- `cursor-tools repo` uses an AI teammate with large context window capability to answer questions. `repo` sends the entire repo as context so it is ideal for questions about how things work or where to find something, it is also great for code review, debugging and planning.  is a teammate who knows the entire codebase inside out and understands how everything works together.
+- `cursor-tools plan` uses an AI teammate with reasoning capability to plan complex tasks. Plan uses a two step process. First it does a whole repo search with a large context window model to find relevant files. Then it sends only those files as context to a thinking model to generate a plan it is great for planning complex tasks and for debugging and refactoring. Plan is a teammate who is really smart on a well defined problem, although doesn't consider the bigger picture.
+- `cursor-tools doc` uses an AI teammate with large context window capability to generate documentation for local or github hosted repositories by sending the entire repo as context. `doc` can be given precise documentation tasks or can be asked to generate complete docs from scratch it is great for generating docs updates or for generating local documentation for a libary or API that you use! Doc is a teammate who is great at summarising and explaining code, in this repo or in any other repo!
+- `cursor-tools browser` uses an AI teammate with browser control (aka operator) capability to operate web browsers. `browser` can operate in a hidden (headless) mode to invisibly test and debug web apps or it can be used to connect to an existing browser session to interactively share your browser with Cursor agent it is great for testing and debugging web apps and for carrying out any task that can be done in a browser such as reading information from a bug ticket or even filling out a form. Browser is a teammate who can help you test and debug web apps, and can share control of your browser to perform small browser-based tasks.
+
+Note: For repo, doc and plan commands the repository content that is sent as context can be reduced by filtering out files in a .repomixignore file.
+
+### Command Nicknames
+When using cursor-tools with Cursor Composer, you can use these nicknames:
+- "Gemini" is a nickname for `cursor-tools repo`
+- "Perplexity" is a nickname for `cursor-tools web`
+- "Stagehand" is a nickname for `cursor-tools browser`
+
 
 ### Use web search
 "Please implement country specific stripe payment pages for the USA, UK, France and Germany. Use cursor-tools web to check the available stripe payment methods in each country."
@@ -283,13 +324,14 @@ All browser commands (`open`, `act`, `observe`, `extract`) support these options
 - `--network`: Capture network activity (enabled by default, use `--no-network` to disable)
 - `--screenshot=<file path>`: Save a screenshot of the page
 - `--timeout=<milliseconds>`: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
-- `--viewport=<width>x<height>`: Set viewport size (e.g., 1280x720).
+- `--viewport=<width>x<height>`: Set viewport size (e.g., 1280x720)
 - `--headless`: Run browser in headless mode (default: true)
 - `--no-headless`: Show browser UI (non-headless mode) for debugging
 - `--connect-to=<port>`: Connect to existing Chrome instance. Special values: 'current' (use existing page), 'reload-current' (refresh existing page)
 - `--wait=<time:duration or selector:css-selector>`: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
 - `--video=<directory>`: Save a video recording (1280x720 resolution, timestamped subdirectory). Not available when using --connect-to
 - `--url=<url>`: Required for `act`, `observe`, and `extract` commands
+- `--evaluate=<string>`: JavaScript code to execute in the browser before the main command
 
 
 **Notes on Connecting to an existing browser session with --connect-to**
@@ -422,54 +464,52 @@ cursor-tools doc --from-github=eastlondoner/cursor-tools --save-to=docs/CURSOR-T
 
 ## Configuration
 
-### Default Settings
-Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file:
+### cursor-tools.config.json
+Customize `cursor-tools` behavior by creating a `cursor-tools.config.json` file. This file can be created either globally in `~/.cursor-tools/cursor-tools.config.json` or locally in your project root.
+
+The cursor-tools.config file configures the local default behaviour for each command and provider.
+
+Here is an example of a typical cursor-tools.config.json file, showing some of the most common configuration options:
 ```json
 {
-  "perplexity": {
-    "model": "sonar-pro",
-    "maxTokens": 8000
+  // Commands
+  "repo": {
+    "provider": "openrouter",
+    "model": "google/gemini-2.0-pro-exp-02-05:free",
   },
-  "gemini": {
+  "doc": {
+    "provider": "openrouter",
+    "model": "anthropic/claude-3-5-sonnet-latest",
+    "maxTokens": 4096
+  },
+  "web": {
+    "provider": "gemini",
     "model": "gemini-2.0-pro-exp",
-    "maxTokens": 10000
   },
-  "tokenCount": {
-    "encoding": "o200k_base"
+  "plan": {
+    "fileProvider": "gemini",
+    "thinkingProvider": "perplexity",
+    "thinkingModel": "r1-1776"
   },
   "browser": {
-    "defaultViewport": "1280x720",
-    "timeout": 30000,
-    "stagehand": {
-      "env": "LOCAL",
-      "headless": true,
-      "verbose": 1,
-      "debugDom": false,
-      "enableCaching": false,
-      "model": "claude-3-5-sonnet-latest", // For Anthropic provider
-      "provider": "anthropic", // or "openai"
-      "timeout": 30000
-    }
-  }
+    "headless": false,
+  },
+  //...
+
+  // Providers
+  "stagehand": {
+    "model": "claude-3-5-sonnet-latest", // For Anthropic provider
+    "provider": "anthropic", // or "openai"
+    "timeout": 90000
+  },
+  "openai": {
+    "model": "gpt-4o"
+  },
+  //...
 }
 ```
 
-The configuration supports:
-- `perplexity.model`: Perplexity AI model to use
-- `perplexity.maxTokens`: Maximum tokens for Perplexity responses
-- `gemini.model`: Google Gemini model to use
-- `gemini.maxTokens`: Maximum tokens for Gemini responses
-- `tokenCount.encoding`: Tokenizer to use for counting tokens (defaults to `o200k_base` which is optimized for Gemini)
-- `browser.defaultViewport`: Default viewport size for browser commands
-- `browser.timeout`: Default timeout for browser commands
-- `browser.stagehand.env`: Environment for browser commands
-- `browser.stagehand.headless`: Whether to run browser in headless mode
-- `browser.stagehand.verbose`: Verbosity level for browser commands
-- `browser.stagehand.debugDom`: Whether to enable debug output for browser commands
-- `browser.stagehand.enableCaching`: Whether to enable caching for browser commands
-- `browser.stagehand.model`: The default model to use. See "Model Selection" below.
-- `browser.stagehand.provider`: The AI provider to use ("openai" or "anthropic"). Determines which API key is required.
-- `browser.stagehand.timeout`: Timeout for operations in milliseconds
+For details of all configuration options, see [CONFIGURATION.md](CONFIGURATION.md). This includes details of all the configuration options and how to use them.
 
 ### GitHub Authentication
 The GitHub commands support several authentication methods:
@@ -608,14 +648,39 @@ All commands support these general options:
 - `--max-tokens`: Control response length
 - `--save-to`: Save command output to a file (in addition to displaying it, like tee)
 - `--quiet`: Suppress stdout output (only useful with --save-to)
-- `--help`: View all available options (help has not been implemented for all commands yet)
+- `--debug`: Show detailed error information
+- `--help`: View all available options
+- `--provider`: AI provider to use. Valid values: openai, anthropic, perplexity, gemini, openrouter
 
 Documentation command specific options:
 - `--from-github`: Generate documentation for a remote GitHub repository (supports @branch syntax)
+- `--hint`: Provide additional context or focus for documentation generation
+
+Plan command specific options:
+- `--fileProvider`: Provider for file identification (gemini, openai, or openrouter)
+- `--thinkingProvider`: Provider for plan generation (gemini, openai, or openrouter)
+- `--fileModel`: Model to use for file identification
+- `--thinkingModel`: Model to use for plan generation
+- `--fileMaxTokens`: Maximum tokens for file identification
+- `--thinkingMaxTokens`: Maximum tokens for plan generation
 
 GitHub command specific options:
-- `--from-github`: Access PRs/issues from a specific GitHub repository (format: owner/repo)
-- `--repo`: Alternative to --from-github, does the same thing (format: owner/repo)
+- `--from-github=<GitHub username>/<repository name>[@<branch>]`: Access PRs/issues from a specific GitHub repository. `--repo` is an older, still supported synonym for this option.
+
+Browser command specific options:
+- `--console`: Capture browser console logs (enabled by default, use `--no-console` to disable)
+- `--html`: Capture page HTML content (disabled by default)
+- `--network`: Capture network activity (enabled by default, use `--no-network` to disable)
+- `--screenshot`: Save a screenshot of the page
+- `--timeout`: Set navigation timeout (default: 120000ms for Stagehand operations, 30000ms for navigation)
+- `--viewport`: Set viewport size (e.g., 1280x720)
+- `--headless`: Run browser in headless mode (default: true)
+- `--no-headless`: Show browser UI (non-headless mode) for debugging
+- `--connect-to`: Connect to existing Chrome instance
+- `--wait`: Wait after page load (e.g., 'time:5s', 'selector:#element-id')
+- `--video`: Save a video recording (1280x720 resolution, timestamped subdirectory)
+- `--url`: Required for `act`, `observe`, and `extract` commands. Url to navigate to on connection or one of the special values: 'current' (use existing page), 'reload-current' (refresh existing page).
+- `--evaluate`: JavaScript code to execute in the browser before the main command
 
 ### Execution Methods
 Execute commands in several ways:

@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator } from '../../../types';
-import { formatOutput, handleBrowserError, ActionError, NavigationError } from './stagehandUtils';
+import { formatOutput, ActionError, NavigationError } from './stagehandUtils';
 import {
   BrowserResult,
   ConstructorParams,
@@ -74,7 +74,9 @@ export class ActCommand implements Command {
         console: options?.console === undefined ? true : options.console,
       };
 
-      console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+      if (options?.debug) {
+        console.log('using stagehand config', { ...config, apiKey: 'REDACTED' });
+      }
       stagehand = new Stagehand(config);
 
       await using _stagehand = {
@@ -165,8 +167,8 @@ export class ActCommand implements Command {
         yield `Screenshot saved to ${options.screenshot}\n`;
       }
     } catch (error) {
-      console.log('error in stagehand loop');
-      yield 'error in stagehand: ' + handleBrowserError(error, options?.debug);
+      console.error('error in stagehand loop', error);
+      throw error;
     }
   }
 
@@ -224,7 +226,7 @@ export class ActCommand implements Command {
 
       return `Successfully performed action: ${instruction}`;
     } catch (error) {
-      console.log('error in stagehand step', error);
+      console.error('error in stagehand step', error);
       if (error instanceof Error) {
         throw new ActionError(`${error.message} Failed to perform action: ${instruction}`, {
           instruction,

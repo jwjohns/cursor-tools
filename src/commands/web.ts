@@ -1,6 +1,6 @@
 import type { Command, CommandGenerator, CommandOptions } from '../types.ts';
 import type { Config } from '../types.ts';
-import { loadConfig, loadEnv } from '../config.ts';
+import { defaultMaxTokens, loadConfig, loadEnv } from '../config.ts';
 import { createProvider } from '../providers/base';
 import { ProviderError } from '../errors';
 
@@ -80,7 +80,7 @@ export class WebCommand implements Command {
         options?.maxTokens ||
         this.config.web?.maxTokens ||
         (this.config as Record<string, any>)[provider]?.maxTokens ||
-        4000;
+        defaultMaxTokens;
 
       yield `Querying ${provider} using ${model} for: ${query} with maxTokens: ${maxTokens}\n`;
 

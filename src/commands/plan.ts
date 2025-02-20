@@ -1,5 +1,5 @@
 import type { Command, CommandGenerator, CommandOptions, Config } from '../types';
-import { loadConfig, loadEnv } from '../config';
+import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
@@ -44,6 +44,13 @@ export class PlanCommand implements Command {
 
   async *execute(query: string, options?: PlanCommandOptions): CommandGenerator {
     try {
+      // Check for conflicting model options
+      if (options?.model && options?.thinkingModel) {
+        throw new Error(
+          'Cannot specify both --model and --thinkingModel options. Use --model to set the thinking model.'
+        );
+      }
+
       const fileProviderName = options?.fileProvider || this.config.plan?.fileProvider || 'gemini';
       const fileProvider = createProvider(fileProviderName);
       const thinkingProviderName =
@@ -57,6 +64,7 @@ export class PlanCommand implements Command {
         DEFAULT_FILE_MODELS[fileProviderName as keyof typeof DEFAULT_FILE_MODELS];
       const thinkingModel =
         options?.thinkingModel ||
+        options?.model || // Use --model for thinking model if specified
         this.config.plan?.thinkingModel ||
         (this.config as Record<string, any>)[thinkingProviderName]?.model ||
         DEFAULT_THINKING_MODELS[thinkingProviderName as keyof typeof DEFAULT_THINKING_MODELS];
@@ -121,7 +129,7 @@ export class PlanCommand implements Command {
           options?.maxTokens ||
           this.config.plan?.fileMaxTokens ||
           (this.config as Record<string, any>)[fileProviderName]?.maxTokens ||
-          10000;
+          defaultMaxTokens;
         yield `Asking ${fileProviderName} to identify relevant files using model: ${fileModel} with max tokens: ${maxTokens}...\n`;
 
         if (options?.debug) {
@@ -133,7 +141,7 @@ export class PlanCommand implements Command {
 
         filePaths = await getRelevantFiles(fileProvider, query, packedRepo, {
           model: fileModel,
-          maxTokens: options?.maxTokens || this.config.plan?.fileMaxTokens,
+          maxTokens,
         });
 
         if (options?.debug) {
@@ -197,7 +205,7 @@ export class PlanCommand implements Command {
         options?.maxTokens ||
         this.config.plan?.thinkingMaxTokens ||
         (this.config as Record<string, any>)[thinkingProviderName]?.maxTokens ||
-        10000;
+        defaultMaxTokens;
       yield `Generating implementation plan using ${thinkingProviderName} with max tokens: ${maxTokens}...\n`;
       let plan: string;
       try {
@@ -256,7 +264,7 @@ async function getRelevantFiles(
   provider: BaseModelProvider,
   query: string,
   fileListing: string,
-  options?: ModelOptions
+  options: Omit<ModelOptions, 'systemPrompt'>
 ): Promise<string[]> {
   const timeoutMs = FIVE_MINUTES;
   const response = await provider.executePrompt(
@@ -285,7 +293,7 @@ async function generatePlan(
   provider: BaseModelProvider,
   query: string,
   repoContext: string,
-  options?: ModelOptions
+  options: Omit<ModelOptions, 'systemPrompt'>
 ): Promise<string> {
   const timeoutMs = TEN_MINUTES;
   const startTime = Date.now();
