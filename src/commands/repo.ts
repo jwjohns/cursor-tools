@@ -5,14 +5,7 @@ import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import { FileError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
-import {
-  GeminiProvider,
-  OpenAIProvider,
-  OpenRouterProvider,
-  PerplexityProvider,
-  ModelBoxProvider,
-} from '../providers/base';
-import { ModelNotFoundError } from '../errors';
+import { createProvider } from '../providers/base';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 
 export class RepoCommand implements Command {
@@ -68,9 +61,7 @@ export class RepoCommand implements Command {
         // Ignore if .cursorrules doesn't exist
       }
 
-      const provider = createRepoProvider(
-        options?.provider || this.config.repo?.provider || 'gemini'
-      );
+      const provider = createProvider(options?.provider || this.config.repo?.provider || 'gemini');
       const providerName = options?.provider || this.config.repo?.provider || 'gemini';
 
       // Configuration hierarchy
@@ -89,7 +80,7 @@ export class RepoCommand implements Command {
 
       yield `Analyzing repository using ${model}...\n`;
       try {
-        const response = await provider.analyzeRepository(query, repoContext, cursorRules, {
+        const response = await analyzeRepository(provider, query, repoContext, cursorRules, {
           model,
           maxTokens,
         });
@@ -112,70 +103,16 @@ export class RepoCommand implements Command {
   }
 }
 
-// Repository-specific provider interface
-export interface RepoModelProvider extends BaseModelProvider {
-  analyzeRepository(
-    query: string,
-    repoContext: string,
-    cursorRules: string,
-    options?: ModelOptions
-  ): Promise<string>;
-}
-
-// Shared mixin for repo providers
-const RepoProviderMixin = {
-  async analyzeRepository(
-    this: BaseModelProvider,
-    query: string,
-    repoContext: string,
-    cursorRules: string,
-    options?: ModelOptions
-  ): Promise<string> {
-    return this.executePrompt(`${cursorRules}\n\n${repoContext}\n\n${query}`, {
-      ...options,
-      systemPrompt:
-        'You are an expert software developer analyzing a repository. Follow user instructions exactly.',
-    });
-  },
-};
-
-// Repository provider implementations
-export class RepoGeminiProvider extends GeminiProvider implements RepoModelProvider {
-  analyzeRepository = RepoProviderMixin.analyzeRepository;
-}
-
-export class RepoOpenAIProvider extends OpenAIProvider implements RepoModelProvider {
-  analyzeRepository = RepoProviderMixin.analyzeRepository;
-}
-
-export class RepoOpenRouterProvider extends OpenRouterProvider implements RepoModelProvider {
-  analyzeRepository = RepoProviderMixin.analyzeRepository;
-}
-
-export class RepoPerplexityProvider extends PerplexityProvider implements RepoModelProvider {
-  analyzeRepository = RepoProviderMixin.analyzeRepository;
-}
-
-export class RepoModelBoxProvider extends ModelBoxProvider implements RepoModelProvider {
-  analyzeRepository = RepoProviderMixin.analyzeRepository;
-}
-
-// Factory function to create providers
-export function createRepoProvider(
-  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox'
-): RepoModelProvider {
-  switch (provider) {
-    case 'gemini':
-      return new RepoGeminiProvider();
-    case 'openai':
-      return new RepoOpenAIProvider();
-    case 'openrouter':
-      return new RepoOpenRouterProvider();
-    case 'perplexity':
-      return new RepoPerplexityProvider();
-    case 'modelbox':
-      return new RepoModelBoxProvider();
-    default:
-      throw new ModelNotFoundError(provider);
-  }
+async function analyzeRepository(
+  provider: BaseModelProvider,
+  query: string,
+  repoContext: string,
+  cursorRules: string,
+  options?: ModelOptions
+): Promise<string> {
+  return provider.executePrompt(`${cursorRules}\n\n${repoContext}\n\n${query}`, {
+    ...options,
+    systemPrompt:
+      "You are an expert software developer analyzing a repository. Follow user instructions exactly and satisfy the user's request.",
+  });
 }

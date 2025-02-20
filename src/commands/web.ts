@@ -88,6 +88,8 @@ export class WebCommand implements Command {
         model,
         maxTokens,
         webSearch: true,
+        systemPrompt:
+          "You are an expert software engineering assistant. Follow user instructions exactly and satisfy the user's request. Always Search the web for the latest information, even if you think you know the answer.",
       });
 
       yield response;

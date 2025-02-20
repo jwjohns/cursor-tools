@@ -25,6 +25,11 @@ export class ProviderError extends CursorToolsError {
   constructor(message: string, details?: unknown) {
     super(message);
     this.name = 'ProviderError';
+    if (details instanceof Error) {
+      this.cause = details;
+    } else if (details) {
+      console.error(message, details);
+    }
   }
 }
 

@@ -2,6 +2,32 @@ import type { Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import OpenAI from 'openai';
 import { ApiKeyMissingError, ModelNotFoundError, NetworkError, ProviderError } from '../errors';
+import { exhaustiveMatchGuard } from '../utils/exhaustiveMatchGuard';
+import { chunkMessage } from '../utils/messageChunker';
+
+// Interfaces for Gemini response types
+interface GeminiGroundingChunk {
+  web?: {
+    uri: string;
+    title?: string;
+  };
+}
+
+interface GeminiGroundingSupport {
+  segment: {
+    startIndex?: number;
+    endIndex?: number;
+    text: string;
+  };
+  groundingChunkIndices: number[];
+  confidenceScores?: number[];
+}
+
+interface GeminiGroundingMetadata {
+  groundingChunks: GeminiGroundingChunk[];
+  groundingSupports: GeminiGroundingSupport[];
+  webSearchQueries?: string[];
+}
 
 // Common options for all providers
 export interface ModelOptions {
@@ -10,6 +36,8 @@ export interface ModelOptions {
   systemPrompt?: string;
   tokenCount?: number; // For handling large token counts
   webSearch?: boolean; // Whether to enable web search capabilities
+  timeout?: number; // Timeout in milliseconds for model API calls
+  debug?: boolean; // Enable debug logging
 }
 
 // Provider configuration in Config
@@ -48,7 +76,11 @@ export abstract class BaseProvider implements BaseModelProvider {
     return options?.maxTokens || 4000; // Default to 4000 if not specified
   }
 
-  protected abstract getSystemPrompt(options?: ModelOptions): string | undefined;
+  protected getSystemPrompt(options?: ModelOptions): string | undefined {
+    return (
+      options?.systemPrompt || 'You are a helpful assistant. Provide clear and concise responses.'
+    );
+  }
 
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
     return {}; // Default implementation - no token count handling
@@ -83,12 +115,9 @@ async function retryWithBackoff<T>(
 
 // Gemini provider implementation
 export class GeminiProvider extends BaseProvider {
-  protected getSystemPrompt(): string | undefined {
-    return undefined; // Gemini doesn't use system prompts
-  }
-
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
     if (tokenCount > 800_000 && tokenCount < 2_000_000) {
+      // 1M is the limit but token counts are very approximate so play it save
       console.error(
         `Repository content is large (${Math.round(tokenCount / 1000)}K tokens), switching to gemini-2.0-pro-exp model...`
       );
@@ -143,7 +172,7 @@ export class GeminiProvider extends BaseProvider {
             throw new ProviderError(error);
           }
           if (tokenModel) {
-            finalOptions = { ...finalOptions, model: tokenModel };
+            finalOptions = { ...finalOptions, model: tokenModel ?? options.model };
           }
         }
 
@@ -154,11 +183,28 @@ export class GeminiProvider extends BaseProvider {
           const requestBody: any = {
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: { maxOutputTokens: maxTokens },
+            system_instruction: {
+              parts: [
+                {
+                  text: this.getSystemPrompt(options),
+                },
+              ],
+            },
           };
 
           // Add web search tool only when explicitly requested
           if (options?.webSearch) {
             requestBody.tools = [
+              // this is how it is documented on google but it doesn't work
+              // {
+              //   google_search_retrieval: {
+              //     "dynamic_retrieval_config": {
+              //       mode: 'MODE_DYNAMIC',
+              //       dynamic_threshold: 0, // always use grounding
+              //     },
+              //   },
+              // },
+              // this is undocumented but works
               {
                 google_search: {},
               },
@@ -183,12 +229,74 @@ export class GeminiProvider extends BaseProvider {
             throw new ProviderError(`Gemini API error: ${JSON.stringify(data.error)}`);
           }
 
-          const content = data.candidates[0]?.content?.parts[0]?.text;
-          if (!content) {
+          // TODO: implement options.debug
+          console.log('Gemini response', JSON.stringify(data, null, 2));
+
+          const content = data.candidates[0]?.content?.parts
+            .map((part: any) => part.text)
+            .filter(Boolean)
+            .join('\n');
+
+          const grounding = data.candidates[0]?.groundingMetadata as GeminiGroundingMetadata;
+          const webSearchQueries = grounding?.webSearchQueries;
+
+          let webSearchText = '';
+          if (webSearchQueries && webSearchQueries.length > 0) {
+            webSearchText = '\nWeb search queries:\n';
+            for (const query of webSearchQueries) {
+              webSearchText += `- ${query}\n`;
+            }
+            webSearchText += '\n';
+          }
+          // Format response with citations if grounding metadata exists
+          let formattedContent = content;
+          if (grounding?.groundingSupports?.length > 0 && grounding?.groundingChunks?.length > 0) {
+            const citationSources = new Map<number, { uri: string; title?: string }>();
+
+            // Build citation sources from groundingChunks
+            grounding.groundingChunks.forEach((chunk: GeminiGroundingChunk, idx: number) => {
+              if (chunk.web) {
+                citationSources.set(idx, {
+                  uri: chunk.web.uri,
+                  title: chunk.web.title,
+                });
+              }
+            });
+
+            // Format text with citations
+            let formattedText = '';
+            grounding.groundingSupports.forEach((support: GeminiGroundingSupport) => {
+              const segment = support.segment;
+              const citations = support.groundingChunkIndices
+                .map((idx: number) => {
+                  const source = citationSources.get(idx);
+                  return source ? `[${idx + 1}]` : '';
+                })
+                .filter(Boolean)
+                .join('');
+
+              formattedText += segment.text + (citations ? ` ${citations}` : '') + ' ';
+            });
+
+            // Add citations list
+            if (citationSources.size > 0) {
+              let citationsText = '\nCitations:\n';
+              citationSources.forEach((source, idx) => {
+                citationsText += `[${idx + 1}]: ${source.uri}${source.title ? ` ${source.title}` : ''}\n`;
+              });
+              formattedText = citationsText + '\n' + webSearchText + formattedText;
+            } else {
+              formattedText = webSearchText + formattedText;
+            }
+            // replace the original content with the formatted text
+            formattedContent = formattedText.trim();
+          }
+
+          if (!formattedContent) {
             throw new ProviderError('Gemini returned an empty response');
           }
 
-          return content;
+          return formattedContent;
         } catch (error) {
           if (error instanceof ProviderError) {
             throw error;
@@ -226,12 +334,6 @@ abstract class OpenAIBase extends BaseProvider {
     });
   }
 
-  protected getSystemPrompt(options?: ModelOptions): string | undefined {
-    return (
-      options?.systemPrompt || 'You are a helpful assistant. Provide clear and concise responses.'
-    );
-  }
-
   supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
     return {
       supported: false,
@@ -261,6 +363,7 @@ abstract class OpenAIBase extends BaseProvider {
 
       return content;
     } catch (error) {
+      console.error(`Error in ${this.constructor.name} executePrompt`, error);
       if (error instanceof ProviderError) {
         throw error;
       }
@@ -285,6 +388,55 @@ export class OpenAIProvider extends OpenAIBase {
       error: 'OpenAI does not support web search capabilities',
     };
   }
+
+  async executePrompt(prompt: string, options?: ModelOptions): Promise<string> {
+    const model = this.getModel(options);
+    const maxTokens = this.getMaxTokens(options);
+    const systemPrompt = this.getSystemPrompt(options);
+    const messageLimit = 1048576; // OpenAI's character limit
+
+    const promptChunks = chunkMessage(prompt, messageLimit);
+    let combinedResponseContent = '';
+
+    for (const chunk of promptChunks) {
+      try {
+        const response = await this.client.chat.completions.create({
+          model,
+          messages: [
+            ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+            { role: 'user' as const, content: chunk },
+          ],
+          ...(model.startsWith('o')
+            ? {
+                max_completion_tokens: maxTokens,
+              }
+            : {
+                max_tokens: maxTokens,
+              }),
+        });
+
+        const content = response.choices[0].message.content;
+        if (content) {
+          combinedResponseContent += content + '\n'; // Append chunk response
+        } else {
+          console.warn(`${this.constructor.name} returned an empty response chunk.`);
+        }
+      } catch (error) {
+        console.error(`Error in ${this.constructor.name} executePrompt chunk`, error);
+        if (error instanceof ProviderError) {
+          throw error;
+        }
+        throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
+      }
+    }
+
+    if (!combinedResponseContent.trim()) {
+      throw new ProviderError(
+        `${this.constructor.name} returned an overall empty response after processing chunks.`
+      );
+    }
+    return combinedResponseContent.trim();
+  }
 }
 
 // OpenRouter provider implementation
@@ -296,32 +448,63 @@ export class OpenRouterProvider extends OpenAIBase {
     }
     super(apiKey, 'https://openrouter.ai/api/v1', {
       defaultHeaders: {
-        'HTTP-Referer': 'https://cursor-tools.com',
+        'HTTP-Referer': 'http://cursor-tools.com',
         'X-Title': 'cursor-tools',
       },
     });
   }
 
-  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
-    if (model.startsWith('perplexity/') && (model.includes('sonar') || model.includes('online'))) {
-      return { supported: true };
+  async executePrompt(prompt: string, options?: ModelOptions): Promise<string> {
+    const model = this.getModel(options);
+    const maxTokens = this.getMaxTokens(options);
+    const systemPrompt = this.getSystemPrompt(options);
+    console.log(
+      `OpenRouter Provider: Executing prompt with model: ${model}, maxTokens: ${maxTokens}`
+    );
+    if (options?.debug) {
+      console.log('Prompt being sent to OpenRouter:');
+      console.log(prompt.slice(0, 500) + (prompt.length > 500 ? '... (truncated)' : ''));
     }
+
+    try {
+      const response = await this.client.chat.completions.create(
+        {
+          model,
+          messages: [
+            ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+            { role: 'user' as const, content: prompt },
+          ],
+          max_tokens: maxTokens,
+        },
+        {
+          timeout: options?.timeout,
+        }
+      );
+
+      const content = response.choices[0].message.content;
+      if (!content) {
+        throw new ProviderError(`${this.constructor.name} returned an empty response`);
+      }
+      return content;
+    } catch (error) {
+      console.error('OpenRouter Provider: Error during API call:', error);
+      if (error instanceof ProviderError || error instanceof NetworkError) {
+        throw error;
+      }
+      throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
+    }
+  }
+
+  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
     return {
       supported: false,
-      model: 'perplexity/sonar',
-      error: `Model ${model} does not support web search. Use a Perplexity model instead.`,
+      error: 'OpenRouter does not support web search capabilities',
     };
   }
 }
 
 // Perplexity provider implementation
 export class PerplexityProvider extends BaseProvider {
-  protected getSystemPrompt(options?: ModelOptions): string | undefined {
-    return (
-      options?.systemPrompt || 'You are a helpful assistant. Provide clear and concise responses.'
-    );
-  }
-
   supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
     if (model.startsWith('sonar')) {
       return { supported: true };
@@ -370,6 +553,7 @@ export class PerplexityProvider extends BaseProvider {
 
           const data = await response.json();
           const content = data.choices[0]?.message?.content;
+
           if (!content) {
             throw new ProviderError('Perplexity returned an empty response');
           }
@@ -433,6 +617,6 @@ export function createProvider(
     case 'modelbox':
       return new ModelBoxProvider();
     default:
-      throw new Error(`Unknown provider: ${provider}`);
+      throw exhaustiveMatchGuard(provider);
   }
 }

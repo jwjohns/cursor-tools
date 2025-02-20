@@ -7,14 +7,11 @@ export const defaultConfig: Config = {
   plan: {
     fileProvider: 'gemini',
     thinkingProvider: 'perplexity',
-    fileModel: 'gemini-2.0-pro-exp',
-    thinkingModel: 'sonar-reasoning-pro',
     fileMaxTokens: 8192,
     thinkingMaxTokens: 8192,
   },
   repo: {
-    provider: 'perplexity',
-    model: 'sonar-reasoning-pro',
+    provider: 'gemini',
     maxTokens: 10000,
   },
   doc: {

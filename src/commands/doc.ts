@@ -1,18 +1,20 @@
-import type { Command, CommandGenerator, CommandOptions, Config } from '../types';
+import type { Command, CommandGenerator, CommandOptions, Config, Provider } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import { FileError, NetworkError, ProviderError } from '../errors';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
 import {
+  createProvider,
   GeminiProvider,
   OpenAIProvider,
   OpenRouterProvider,
   PerplexityProvider,
 } from '../providers/base';
 import { ModelNotFoundError } from '../errors';
-import { ignorePatterns, includePatterns } from '../repomix/repomixConfig';
+import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 import { ModelBoxProvider } from '../providers/base';
+import { exhaustiveMatchGuard } from '../utils/exhaustiveMatchGuard';
 
 interface DocCommandOptions extends CommandOptions {
   model?: string;
@@ -206,25 +208,17 @@ Please:
         console.error('Packing local repository using repomix...\n');
         const tempFile = '.repomix-output.txt';
         try {
-          await pack(process.cwd(), {
+          const packResult = await pack(process.cwd(), {
             output: {
+              ...outputOptions,
               filePath: tempFile,
-              style: 'plain',
-              parsableStyle: false,
-              fileSummary: false,
-              directoryStructure: true,
-              removeComments: false,
-              removeEmptyLines: true,
-              showLineNumbers: false,
-              copyToClipboard: false,
               includeEmptyDirectories: false,
-              topFilesLength: 1000,
             },
-            include: ['**/*'],
+            include: includePatterns,
             ignore: {
               useGitignore: true,
               useDefaultPatterns: true,
-              customPatterns: [],
+              customPatterns: ignorePatterns,
             },
             security: {
               enableSecurityCheck: true,
@@ -234,37 +228,77 @@ Please:
             },
             cwd: process.cwd(),
           });
+          try {
+            repoContext = {
+              text: readFileSync(tempFile, 'utf-8'),
+              tokenCount: packResult.totalTokens,
+            };
+          } catch (error) {
+            throw new FileError('Failed to read repository context', error);
+          }
         } catch (error) {
           throw new FileError('Failed to pack repository', error);
         }
-
-        try {
-          repoContext = { text: readFileSync(tempFile, 'utf-8'), tokenCount: 0 };
-        } catch (error) {
-          throw new FileError('Failed to read repository context', error);
-        }
       }
 
-      const provider = createDocProvider(
-        options?.provider || this.config.doc?.provider || 'gemini'
-      );
+      const provider = createProvider(options?.provider || this.config.doc?.provider || 'gemini');
       const providerName = options?.provider || this.config.doc?.provider || 'gemini';
 
       // Add default model handling
-      const getDefaultModel = (provider: string, tokenCount: number) => {
+      const getDefaultModel = (provider: Provider, tokenCount: number) => {
+        console.log('getting default docs model for ', provider, tokenCount);
         if ((this.config as Record<string, any>)[provider]?.model) {
           return (this.config as Record<string, any>)[provider]?.model;
         }
         switch (provider) {
           case 'gemini':
+            if (tokenCount < 800_000) {
+              // 1M is the limit but token counts are very approximate so play it save
+              return 'gemini-2.0-flash-thinking-exp';
+            }
             return 'gemini-2.0-pro-exp';
           case 'openai':
-            return 'gpt-4';
+            return 'o3-mini';
           case 'openrouter':
-            return 'anthropic/claude-3-opus';
+            if (tokenCount < 150_000) {
+              // 200k is the limit but token counts are very approximate so play it save
+              return 'anthropic/claude-3-5-sonnet';
+            }
+            if (tokenCount < 800_000) {
+              return 'google/gemini-2.0-flash-thinking-exp:free';
+            }
+            return 'google/gemini-2.0-pro-exp-02-05:free';
+          case 'perplexity':
+            return 'sonar-pro';
+          case 'modelbox':
+            if (tokenCount < 150_000) {
+              // 200k is the limit but token counts are very approximate so play it save
+              return 'anthropic/claude-3-5-sonnet';
+            }
+            return 'google/gemini-2.0-flash-thinking';
           default:
-            return undefined;
+            throw exhaustiveMatchGuard(provider);
         }
+      };
+
+      // Add provider-specific token limits
+      const getMaxTokens = (provider: Provider, requestedTokens?: number) => {
+        const defaultTokens = {
+          gemini: 10000,
+          openai: 4096,
+          openrouter: 4096,
+          perplexity: 4096,
+          modelbox: 8192,
+        };
+
+        const maxTokens =
+          requestedTokens ||
+          this.config.doc?.maxTokens ||
+          (this.config as Record<string, any>)[provider]?.maxTokens ||
+          defaultTokens[provider];
+
+        // Ensure we don't exceed provider limits
+        return Math.min(maxTokens, defaultTokens[provider]);
       };
 
       const model =
@@ -279,12 +313,10 @@ Please:
       console.error(`Generating documentation using ${model}...\n`);
       let documentation: string;
       try {
-        documentation = await provider.generateDocumentation(repoContext, {
+        documentation = await generateDocumentation(query, provider, repoContext, {
           model,
-          maxTokens:
-            options?.maxTokens ||
-            this.config.doc?.maxTokens ||
-            (this.config as Record<string, any>)[providerName]?.maxTokens,
+          maxTokens: getMaxTokens(providerName, options?.maxTokens),
+          timeout: providerName === 'openrouter' ? 120000 : undefined, // Add 2 minute timeout for OpenRouter
         });
       } catch (error) {
         throw new ProviderError(
@@ -323,14 +355,14 @@ export interface DocModelProvider extends BaseModelProvider {
   ): Promise<string>;
 }
 
-// Shared mixin for doc providers
-const DocProviderMixin = {
-  async generateDocumentation(
-    this: BaseModelProvider,
-    repoContext: { text: string; tokenCount: number },
-    options?: ModelOptions
-  ): Promise<string> {
-    const prompt = `
+async function generateDocumentation(
+  query: string,
+  provider: BaseModelProvider,
+  repoContext: { text: string; tokenCount: number },
+  options?: ModelOptions
+): Promise<string> {
+  const userInstructions = query ? `User Instructions:\n${query}` : '';
+  const prompt = `
 Focus on:
 1. Repository purpose and "what is it" summary
 2. Quick start: How to install and use the basic core features of the project
@@ -341,55 +373,15 @@ Focus on:
 7. Dependencies and requirements
 8. Advanced usage examples
 
+${userInstructions}
+
 Repository Context:
 ${repoContext.text}`;
 
-    return this.executePrompt(prompt, {
-      ...options,
-      tokenCount: repoContext.tokenCount,
-      systemPrompt:
-        'You are a documentation expert. Generate comprehensive documentation that is clear, well-structured, and follows best practices.',
-    });
-  },
-};
-
-// Documentation provider implementations
-export class DocGeminiProvider extends GeminiProvider implements DocModelProvider {
-  generateDocumentation = DocProviderMixin.generateDocumentation;
-}
-
-export class DocOpenAIProvider extends OpenAIProvider implements DocModelProvider {
-  generateDocumentation = DocProviderMixin.generateDocumentation;
-}
-
-export class DocOpenRouterProvider extends OpenRouterProvider implements DocModelProvider {
-  generateDocumentation = DocProviderMixin.generateDocumentation;
-}
-
-export class DocPerplexityProvider extends PerplexityProvider implements DocModelProvider {
-  generateDocumentation = DocProviderMixin.generateDocumentation;
-}
-
-export class DocModelBoxProvider extends ModelBoxProvider implements DocModelProvider {
-  generateDocumentation = DocProviderMixin.generateDocumentation;
-}
-
-// Factory function to create providers
-export function createDocProvider(
-  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox'
-): DocModelProvider {
-  switch (provider) {
-    case 'gemini':
-      return new DocGeminiProvider();
-    case 'openai':
-      return new DocOpenAIProvider();
-    case 'openrouter':
-      return new DocOpenRouterProvider();
-    case 'perplexity':
-      return new DocPerplexityProvider();
-    case 'modelbox':
-      return new DocModelBoxProvider();
-    default:
-      throw new ModelNotFoundError(provider);
-  }
+  return provider.executePrompt(prompt, {
+    ...options,
+    tokenCount: repoContext.tokenCount,
+    systemPrompt:
+      'You are a documentation expert generating documentation for the provided codebase. You are generating documentation for AIs to use. Focus on communicating comprehensive information concisely. Public interfaces are more important than internal details. Generate comprehensive documentation that is clear, well-structured, and follows best practices. Always follow user instructions exactly.',
+  });
 }

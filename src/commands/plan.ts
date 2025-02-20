@@ -3,49 +3,36 @@ import { loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
 import type { ModelOptions, BaseModelProvider } from '../providers/base';
-import {
-  GeminiProvider,
-  OpenAIProvider,
-  OpenRouterProvider,
-  PerplexityProvider,
-  ModelBoxProvider,
-} from '../providers/base';
+import { createProvider } from '../providers/base';
 import { FileError, ProviderError } from '../errors';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 
+type FileProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
+type ThinkingProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
+
 // Plan-specific options interface
 interface PlanCommandOptions extends CommandOptions {
-  fileProvider?: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
-  thinkingProvider?: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
+  fileProvider?: FileProvider;
+  thinkingProvider?: ThinkingProvider;
   fileModel?: string;
   thinkingModel?: string;
 }
 
-// Plan-specific provider interface
-export interface PlanModelProvider extends BaseModelProvider {
-  getRelevantFiles(query: string, fileListing: string, options?: ModelOptions): Promise<string[]>;
-  generatePlan(query: string, repoContext: string, options?: ModelOptions): Promise<string>;
-}
+const DEFAULT_FILE_MODELS: Record<FileProvider, string> = {
+  gemini: 'gemini-2.0-pro-exp', // largest context window (2M tokens)
+  openai: 'o3-mini', // largest context window (200k)
+  perplexity: 'sonar-pro', // largest context window (200k tokens)
+  openrouter: 'google/gemini-2.0-pro-exp-02-05:free', // largest context window (2M tokens)
+  modelbox: 'anthropic/claude-3-5-sonnet', // just for variety
+};
 
-// Factory function to create plan providers
-function createPlanProvider(
-  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox'
-): PlanModelProvider {
-  switch (provider) {
-    case 'gemini':
-      return new PlanGeminiProvider();
-    case 'openai':
-      return new PlanOpenAIProvider();
-    case 'openrouter':
-      return new PlanOpenRouterProvider();
-    case 'perplexity':
-      return new PlanPerplexityProvider();
-    case 'modelbox':
-      return new PlanModelBoxProvider();
-    default:
-      throw new Error(`Unknown provider: ${provider}`);
-  }
-}
+const DEFAULT_THINKING_MODELS: Record<ThinkingProvider, string> = {
+  gemini: 'gemini-2.0-flash-thinking-exp',
+  openai: 'o3-mini',
+  perplexity: 'r1-1776',
+  openrouter: 'openai/o3-mini',
+  modelbox: 'anthropic/claude-3-5-sonnet',
+};
 
 export class PlanCommand implements Command {
   private config: Config;
@@ -58,23 +45,25 @@ export class PlanCommand implements Command {
   async *execute(query: string, options?: PlanCommandOptions): CommandGenerator {
     try {
       const fileProviderName = options?.fileProvider || this.config.plan?.fileProvider || 'gemini';
-      const fileProvider = createPlanProvider(fileProviderName);
+      const fileProvider = createProvider(fileProviderName);
       const thinkingProviderName =
         options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai';
-      const thinkingProvider = createPlanProvider(thinkingProviderName);
+      const thinkingProvider = createProvider(thinkingProviderName);
 
       const fileModel =
         options?.fileModel ||
         this.config.plan?.fileModel ||
-        (this.config as Record<string, any>)[fileProviderName]?.model;
+        (this.config as Record<string, any>)[fileProviderName]?.model ||
+        DEFAULT_FILE_MODELS[fileProviderName as keyof typeof DEFAULT_FILE_MODELS];
       const thinkingModel =
         options?.thinkingModel ||
         this.config.plan?.thinkingModel ||
-        (this.config as Record<string, any>)[thinkingProviderName]?.model;
+        (this.config as Record<string, any>)[thinkingProviderName]?.model ||
+        DEFAULT_THINKING_MODELS[thinkingProviderName as keyof typeof DEFAULT_THINKING_MODELS];
 
       yield `Using file provider: ${fileProviderName}\n`;
-      yield `Using thinking provider: ${thinkingProviderName}\n`;
       yield `Using file model: ${fileModel}\n`;
+      yield `Using thinking provider: ${thinkingProviderName}\n`;
       yield `Using thinking model: ${thinkingModel}\n`;
 
       yield 'Finding relevant files...\n';
@@ -128,7 +117,12 @@ export class PlanCommand implements Command {
       // Get relevant files
       let filePaths: string[];
       try {
-        yield `Asking ${fileProviderName} to identify relevant files...\n`;
+        const maxTokens =
+          options?.maxTokens ||
+          this.config.plan?.fileMaxTokens ||
+          (this.config as Record<string, any>)[fileProviderName]?.maxTokens ||
+          10000;
+        yield `Asking ${fileProviderName} to identify relevant files using model: ${fileModel} with max tokens: ${maxTokens}...\n`;
 
         if (options?.debug) {
           yield 'Provider configuration:\n';
@@ -137,8 +131,8 @@ export class PlanCommand implements Command {
           yield `Max tokens: ${options?.maxTokens || this.config.plan?.fileMaxTokens}\n\n`;
         }
 
-        filePaths = await (fileProvider as PlanModelProvider).getRelevantFiles(query, packedRepo, {
-          model: options?.fileModel || this.config.plan?.fileModel,
+        filePaths = await getRelevantFiles(fileProvider, query, packedRepo, {
+          model: fileModel,
           maxTokens: options?.maxTokens || this.config.plan?.fileMaxTokens,
         });
 
@@ -153,9 +147,7 @@ export class PlanCommand implements Command {
           }
         }
       } catch (error) {
-        if (options?.debug) {
-          yield `Error details: ${error instanceof Error ? error.stack : String(error)}\n`;
-        }
+        console.error('Error in getRelevantFiles', error);
         throw new ProviderError('Failed to identify relevant files', error);
       }
 
@@ -170,7 +162,7 @@ export class PlanCommand implements Command {
       let filteredContent: string;
       try {
         const tempFile = '.repomix-plan-filtered.txt';
-        await pack(process.cwd(), {
+        const filteredResult = await pack(process.cwd(), {
           output: {
             ...outputOptions,
             filePath: tempFile,
@@ -193,6 +185,7 @@ export class PlanCommand implements Command {
 
         if (options?.debug) {
           yield 'Content extraction completed.\n';
+          yield `Extracted content size: ${filteredResult.totalTokens} tokens\n`;
         }
 
         filteredContent = readFileSync(tempFile, 'utf-8');
@@ -200,14 +193,20 @@ export class PlanCommand implements Command {
         throw new FileError('Failed to extract content', error);
       }
 
-      yield 'Generating implementation plan using ${thinkingProviderName}...\n';
+      const maxTokens =
+        options?.maxTokens ||
+        this.config.plan?.thinkingMaxTokens ||
+        (this.config as Record<string, any>)[thinkingProviderName]?.maxTokens ||
+        10000;
+      yield `Generating implementation plan using ${thinkingProviderName} with max tokens: ${maxTokens}...\n`;
       let plan: string;
       try {
-        plan = await thinkingProvider.generatePlan(query, filteredContent, {
-          model: options?.thinkingModel || this.config.plan?.thinkingModel,
-          maxTokens: options?.maxTokens || this.config.plan?.thinkingMaxTokens,
+        plan = await generatePlan(thinkingProvider, query, filteredContent, {
+          model: thinkingModel,
+          maxTokens: maxTokens,
         });
       } catch (error) {
+        console.error('Error in generatePlan', error);
         throw new ProviderError('Failed to generate implementation plan', error);
       }
 
@@ -215,13 +214,13 @@ export class PlanCommand implements Command {
     } catch (error) {
       // console.error errors and then throw
       if (error instanceof FileError || error instanceof ProviderError) {
-        console.error(`Error in plan command: ${error.name}: ${error.message}`);
+        console.error('Error in plan command', error);
         if (error.details && options?.debug) {
           console.error(`Debug details: ${JSON.stringify(error.details, null, 2)}`);
         }
         throw error;
       } else if (error instanceof Error) {
-        console.error(`Error in plan command: ${error.message}`);
+        console.error('Error in plan command', error);
         throw error;
       } else {
         console.error('An unknown error occurred in plan command');
@@ -250,16 +249,18 @@ function parseFileList(fileListText: string): string[] {
   return matches.filter((f) => f.length > 0);
 }
 
-// Shared mixin for plan providers
-const PlanProviderMixin = {
-  async getRelevantFiles(
-    this: BaseModelProvider,
-    query: string,
-    fileListing: string,
-    options?: ModelOptions
-  ): Promise<string[]> {
-    const response = await this.executePrompt(
-      `Identify files that are relevant to the following query:
+const FIVE_MINUTES = 300000;
+
+// Pure functions for plan operations
+async function getRelevantFiles(
+  provider: BaseModelProvider,
+  query: string,
+  fileListing: string,
+  options?: ModelOptions
+): Promise<string[]> {
+  const timeoutMs = FIVE_MINUTES;
+  const response = await provider.executePrompt(
+    `Identify files that are relevant to the following query:
 
 Query: ${query}
 
@@ -268,51 +269,50 @@ Do not include any other text, explanations, or markdown formatting. Just the fi
 
 Files:
 ${fileListing}`,
+    {
+      ...options,
+      timeout: timeoutMs,
+      systemPrompt:
+        'You are an expert software developer. You must return ONLY a comma-separated list of file paths. No other text or formatting.',
+    }
+  );
+  return parseFileList(response);
+}
+
+const TEN_MINUTES = 600000;
+
+async function generatePlan(
+  provider: BaseModelProvider,
+  query: string,
+  repoContext: string,
+  options?: ModelOptions
+): Promise<string> {
+  const timeoutMs = TEN_MINUTES;
+  const startTime = Date.now();
+  console.log(
+    `[${new Date().toLocaleTimeString()}] Generating plan using ${provider.constructor.name} with timeout: ${timeoutMs}ms...`
+  );
+
+  try {
+    const result = await provider.executePrompt(
+      `Query: ${query}\n\nRepository Context:\n${repoContext}`,
       {
         ...options,
         systemPrompt:
-          'You are an expert software developer. You must return ONLY a comma-separated list of file paths. No other text or formatting.',
+          'You are an expert software engineer who generates step-by-step implementation plans for software development tasks. Given a query and a repository context, generate a detailed plan that is consistent with the existing code. Include specific file paths, code snippets, and any necessary commands. Identify assumptions and provide multiple possible options where appropriate.',
+        timeout: timeoutMs,
       }
     );
-    return parseFileList(response);
-  },
-
-  async generatePlan(
-    this: BaseModelProvider,
-    query: string,
-    repoContext: string,
-    options?: ModelOptions
-  ): Promise<string> {
-    return this.executePrompt(`Query: ${query}\n\nRepository Context:\n${repoContext}`, {
-      ...options,
-      systemPrompt:
-        'You are a helpful assistant that generates step-by-step implementation plans for software development tasks. Given a query and a repository context, generate a detailed plan. Include specific file paths, code snippets, and any necessary commands.',
-    });
-  },
-};
-
-// Plan provider implementations
-export class PlanGeminiProvider extends GeminiProvider implements PlanModelProvider {
-  getRelevantFiles = PlanProviderMixin.getRelevantFiles;
-  generatePlan = PlanProviderMixin.generatePlan;
-}
-
-export class PlanOpenAIProvider extends OpenAIProvider implements PlanModelProvider {
-  getRelevantFiles = PlanProviderMixin.getRelevantFiles;
-  generatePlan = PlanProviderMixin.generatePlan;
-}
-
-export class PlanOpenRouterProvider extends OpenRouterProvider implements PlanModelProvider {
-  getRelevantFiles = PlanProviderMixin.getRelevantFiles;
-  generatePlan = PlanProviderMixin.generatePlan;
-}
-
-export class PlanPerplexityProvider extends PerplexityProvider implements PlanModelProvider {
-  getRelevantFiles = PlanProviderMixin.getRelevantFiles;
-  generatePlan = PlanProviderMixin.generatePlan;
-}
-
-export class PlanModelBoxProvider extends ModelBoxProvider implements PlanModelProvider {
-  getRelevantFiles = PlanProviderMixin.getRelevantFiles;
-  generatePlan = PlanProviderMixin.generatePlan;
+    const endTime = Date.now();
+    console.log(
+      `[${new Date().toLocaleTimeString()}] Plan generation completed in ${((endTime - startTime) / 1000).toFixed(2)} seconds.`
+    );
+    return result;
+  } catch (error) {
+    const endTime = Date.now();
+    console.error(
+      `[${new Date().toLocaleTimeString()}] Plan generation failed after ${((endTime - startTime) / 1000).toFixed(2)} seconds.`
+    );
+    throw error;
+  }
 }

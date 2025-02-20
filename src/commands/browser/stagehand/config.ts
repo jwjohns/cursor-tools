@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { exhaustiveMatchGuard } from '../../../utils/exhaustiveMatchGuard';
 
 // Define available models
 export const availableModels = z.enum(['claude-3-5-sonnet-latest', 'o3-mini', 'gpt-4o']);
@@ -79,7 +80,7 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
         break;
       }
       default:
-        throw new Error('Unrecognized AI provider for stagehand ' + provider);
+        throw exhaustiveMatchGuard(provider, 'Unrecognized AI provider for stagehand');
     }
   }
 
