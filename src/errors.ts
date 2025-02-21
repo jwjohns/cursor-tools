@@ -53,19 +53,19 @@ export class ModelNotFoundError extends ProviderError {
         message += '\nSuggested models:\n- gpt-4o\n- o3-mini';
         break;
       case 'anthropic':
-        message += '\nSuggested models:\n- claude-3-opus-20240229 (max_tokens: 4096)\n- claude-3-sonnet-20240229 (max_tokens: 4096)';
+        message += '\nSuggested models:\n- claude-3-5-opus-latest\n- claude-3-5-sonnet-latest';
         break;
       case 'gemini':
-        message += '\nSuggested models:\n- gemini-pro\n- gemini-1.5-flash';
+        message += '\nSuggested models:\n- gemini-2.0-flash-thinking-exp\n- gemini-2.0-flash\n- gemini-2.0-pro-exp';
         break;
       case 'perplexity':
-        message += '\nSuggested models:\n- mistral-7b\n- codellama-34b';
+        message += '\nSuggested models:\n- sonar-pro\n- sonar-reasoning-pro';
         break;
       case 'openrouter':
         message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3.5-sonnet\n- deepseek/deepseek-chat\n- deepseek/deepseek-r1:free\n- google/gemini-2.0-pro-exp-02-05:free';
         break;
       case 'modelbox':
-        message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3.5-sonnet';
+        message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3-5-sonnet';
         break;
     }
     
