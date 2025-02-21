@@ -62,18 +62,7 @@ export class RunCommand implements Command {
     options: CommandOptions,
     marketplaceData: { servers: MCPServer[] }
   ): Promise<MCPServer[]> {
-    const specifiedServer = options.server;
-
-    // If server is specified, try to find it
-    if (specifiedServer) {
-      const servers = marketplaceData.servers.filter((s) => s.name === specifiedServer);
-      if (servers.length === 0) {
-        throw new MCPConfigError(`Server "${specifiedServer}" not found in marketplace`);
-      }
-      return servers;
-    }
-
-    // Otherwise, find servers based on intent
+    // Find servers based on intent
     const servers = await this.marketplaceManager.findServersForIntent(query, options);
     if (servers.length === 0) {
       throw new MCPConfigError('No suitable servers found for the given query');

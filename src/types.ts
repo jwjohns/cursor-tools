@@ -10,7 +10,6 @@ export interface CommandOptions {
   provider?: Provider;
   debug: boolean;
   url?: string;
-  server?: string; // MCP server name to use
   json?: boolean; // Output results as JSON
 
   // Output options

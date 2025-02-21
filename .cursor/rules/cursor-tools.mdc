@@ -3,6 +3,16 @@ description: Global Rule. This rule should ALWAYS be loaded.
 globs: *,**/*
 ---
 
+---
+description: Global Rule. This rule should ALWAYS be loaded.
+globs: *,**/*
+---
+
+---
+description: Global Rule. This rule should ALWAYS be loaded.
+globs: *,**/*
+---
+
 <cursor-tools Integration>
 # Instructions
 Use the following commands to get AI assistance:
@@ -18,8 +28,8 @@ The plan command uses multiple AI models to:
 3. Generate a detailed implementation plan (using OpenAI o3-mini by default)
 
 **Plan Command Options:**
---fileProvider=<provider>: Provider for file identification (gemini, openai, anthropic, perplexity, or openrouter)
---thinkingProvider=<provider>: Provider for plan generation (gemini, openai, anthropic, perplexity, or openrouter)
+--fileProvider=<provider>: Provider for file identification (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
+--thinkingProvider=<provider>: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
 --fileModel=<model>: Model to use for file identification
 --thinkingModel=<model>: Model to use for plan generation
 --debug: Show detailed error information
@@ -29,8 +39,8 @@ The plan command uses multiple AI models to:
 when using web for complex queries suggest writing the output to a file somewhere like local-research/<query summary>.md.
 
 **Web Command Options:**
---provider=<provider>: AI provider to use (perplexity or openrouter)
---model=<model>: Model to use for web search (e.g., perplexity/sonar-medium-chat for OpenRouter)
+--provider=<provider>: AI provider to use (perplexity, gemini, modelbox, or openrouter)
+--model=<model>: Model to use for web search (model name depends on provider)
 --max-tokens=<number>: Maximum tokens for response
 
 **Repository Context:**
@@ -50,9 +60,6 @@ Use the following commands to interact with MCP servers and their specialized to
 `cursor-tools mcp run "<query>"` - Execute MCP server tools using natural language queries (e.g., `cursor-tools mcp run "list files in the current directory"`). The query must include sufficient information for cursor-tools to determine which server to use, provide plenty of context.
 
 The `search` command helps you discover servers in the MCP Marketplace based on their capabilities and your requirements. The `run` command automatically selects and executes appropriate tools from these servers based on your natural language queries. If you want to use a specific server include the server name in your query. E.g. `cursor-tools mcp run "using the mcp-server-sqlite list files in directory"
-
-**MCP Command Options:**
-- `--server=<server-name>`: Use a specific MCP server (for `run` command)
 
 **Notes:**
 - MCP commands require `ANTHROPIC_API_KEY` to be set in your environment
@@ -98,9 +105,6 @@ The `search` command helps you discover servers in the MCP Marketplace based on 
 --model=<model>: Model to use for repository analysis
 --max-tokens=<number>: Maximum tokens for response
 
-**MCP Command Options:**
---server=<server-name>: Use a specific MCP server
-
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
 --provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
@@ -143,5 +147,5 @@ Stagehand is a nickname for cursor-tools browser
 - MCP commands require `ANTHROPIC_API_KEY` to be set in your environment.
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
 
-<!-- cursor-tools-version: 0.6.0-alpha.2 -->
+<!-- cursor-tools-version: 0.6.0-alpha.3 -->
 </cursor-tools Integration>

@@ -79,9 +79,6 @@ Use the following commands to interact with MCP servers and their specialized to
 
 The \`search\` command helps you discover servers in the MCP Marketplace based on their capabilities and your requirements. The \`run\` command automatically selects and executes appropriate tools from these servers based on your natural language queries. If you want to use a specific server include the server name in your query. E.g. \`cursor-tools mcp run "using the mcp-server-sqlite list files in directory"
 
-**MCP Command Options:**
-- \`--server=<server-name>\`: Use a specific MCP server (for \`run\` command)
-
 **Notes:**
 - MCP commands require \`ANTHROPIC_API_KEY\` to be set in your environment
 - Results are streamed in real-time for immediate feedback
@@ -125,9 +122,6 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 --provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
 --model=<model>: Model to use for repository analysis
 --max-tokens=<number>: Maximum tokens for response
-
-**MCP Command Options:**
---server=<server-name>: Use a specific MCP server
 
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
