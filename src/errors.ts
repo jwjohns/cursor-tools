@@ -50,22 +50,22 @@ export class ModelNotFoundError extends ProviderError {
     // Add model suggestions based on provider
     switch (provider) {
       case 'openai':
-        message += '\nSuggested models:\n- gpt-4-turbo-preview\n- gpt-3.5-turbo';
+        message += '\nSuggested models:\n- gpt-4o\n- o3-mini';
         break;
       case 'anthropic':
-        message += '\nSuggested models:\n- claude-3-opus-20240229\n- claude-3-sonnet-20240229';
+        message += '\nSuggested models:\n- claude-3-opus-latest\n- claude-3-sonnet-latest';
         break;
       case 'gemini':
-        message += '\nSuggested models:\n- gemini-2.0-pro-exp\n- gemini-2.0-pro';
+        message += '\nSuggested models:\n- GPT-2.0-Flash-Thinking-exp';
         break;
       case 'perplexity':
         message += '\nSuggested models:\n- sonar-pro\n- sonar-small-online';
         break;
       case 'openrouter':
-        message += '\nSuggested models:\n- anthropic/claude-3-sonnet\n- google/gemini-pro\n- openai/gpt-4-turbo';
+        message += '\nSuggested models:\n- openai/gpt-4o\n- mistral/mistral-large\n- groq/mixtral-8x7b';
         break;
       case 'modelbox':
-        message += '\nSuggested models:\n- perplexity/sonar-pro\n- anthropic/claude-3-sonnet';
+        message += '\nSuggested models:\n- openai/gpt-4o\n- claude-3-5-sonnet';
         break;
     }
     
