@@ -1,7 +1,13 @@
 import type { Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import OpenAI from 'openai';
-import { ApiKeyMissingError, ModelNotFoundError, NetworkError, ProviderError, GeminiRecitationError } from '../errors';
+import {
+  ApiKeyMissingError,
+  ModelNotFoundError,
+  NetworkError,
+  ProviderError,
+  GeminiRecitationError,
+} from '../errors';
 import { exhaustiveMatchGuard } from '../utils/exhaustiveMatchGuard';
 import { chunkMessage } from '../utils/messageChunker';
 import Anthropic from '@anthropic-ai/sdk';
@@ -146,7 +152,7 @@ export class GeminiProvider extends BaseProvider {
 
   supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
     const unsupportedModels = new Set([
-      'foo'
+      'foo',
       // 'gemini-2.0-flash-thinking-exp-01-21',
       // 'gemini-2.0-flash-thinking-exp',
     ]);
@@ -668,9 +674,7 @@ export class AnthropicProvider extends BaseProvider {
         model,
         max_tokens: maxTokens,
         system: systemPrompt,
-        messages: [
-          { role: 'user', content: prompt }
-        ],
+        messages: [{ role: 'user', content: prompt }],
       });
 
       const content = response.content[0];

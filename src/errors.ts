@@ -46,7 +46,7 @@ export class ApiKeyMissingError extends ProviderError {
 export class ModelNotFoundError extends ProviderError {
   constructor(provider: string) {
     let message = `No model specified for ${provider}.`;
-    
+
     // Add model suggestions based on provider
     switch (provider) {
       case 'openai':
@@ -56,21 +56,23 @@ export class ModelNotFoundError extends ProviderError {
         message += '\nSuggested models:\n- claude-3-5-opus-latest\n- claude-3-5-sonnet-latest';
         break;
       case 'gemini':
-        message += '\nSuggested models:\n- gemini-2.0-flash-thinking-exp\n- gemini-2.0-flash\n- gemini-2.0-pro-exp';
+        message +=
+          '\nSuggested models:\n- gemini-2.0-flash-thinking-exp\n- gemini-2.0-flash\n- gemini-2.0-pro-exp';
         break;
       case 'perplexity':
         message += '\nSuggested models:\n- sonar-pro\n- sonar-reasoning-pro';
         break;
       case 'openrouter':
-        message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3.5-sonnet\n- deepseek/deepseek-chat\n- deepseek/deepseek-r1:free\n- google/gemini-2.0-pro-exp-02-05:free\n- mistral/mistral-large\n- groq/llama2-70b';
+        message +=
+          '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3.5-sonnet\n- deepseek/deepseek-chat\n- deepseek/deepseek-r1:free\n- google/gemini-2.0-pro-exp-02-05:free\n- mistral/mistral-large\n- groq/llama2-70b';
         break;
       case 'modelbox':
         message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3-5-sonnet';
         break;
     }
-    
+
     message += '\nUse --model to specify a model.';
-    
+
     super(message, { provider, model: undefined });
     this.name = 'ModelNotFoundError';
   }
@@ -86,7 +88,8 @@ export class NetworkError extends ProviderError {
 export class GeminiRecitationError extends ProviderError {
   constructor(message?: string) {
     super(
-      message || 'Gemini was unable to provide an original response and may be reciting the prompt. Please rephrase your query.',
+      message ||
+        'Gemini was unable to provide an original response and may be reciting the prompt. Please rephrase your query.',
       { finishReason: 'RECITATION' }
     );
     this.name = 'GeminiRecitationError';
