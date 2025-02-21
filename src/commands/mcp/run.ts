@@ -160,7 +160,12 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
 
       // Parse the response and ensure it's an array of strings
       let args = JSON.parse(cleanedResponse);
-      console.log('server config', JSON.stringify(args, null, 2));
+      if (options.debug) {
+        console.log(
+          'server config',
+          JSON.stringify({ ...args, env: Object.keys(args.env ?? {}) }, null, 2)
+        );
+      }
       if (Array.isArray(args) && (args[0] === 'uvx' || args[0] === 'npx')) {
         args = {
           mcpServers: {

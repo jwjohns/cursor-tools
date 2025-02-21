@@ -42,7 +42,7 @@ export class PlanCommand implements Command {
     this.config = loadConfig();
   }
 
-  async *execute(query: string, options?: PlanCommandOptions): CommandGenerator {
+  async *execute(query: string, options: PlanCommandOptions): CommandGenerator {
     try {
       // Check for conflicting model options
       if (options?.model && options?.thinkingModel) {
