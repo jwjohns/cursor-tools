@@ -59,7 +59,10 @@ export class PlanCommand implements Command {
       const fileProviderName = options?.fileProvider || this.config.plan?.fileProvider || 'gemini';
       const fileProvider = createProvider(fileProviderName);
       const thinkingProviderName =
-        options?.thinkingProvider || options.provider || this.config.plan?.thinkingProvider || 'openai';
+        options?.thinkingProvider ||
+        options.provider ||
+        this.config.plan?.thinkingProvider ||
+        'openai';
       const thinkingProvider = createProvider(thinkingProviderName);
 
       const fileModel =
