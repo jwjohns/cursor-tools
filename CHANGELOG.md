@@ -6,7 +6,10 @@ All notable changes to this project will be documented in this file.
 ## [Unreleased]
 
 ### Added
-- Added Anthropic provider for access to Claude models through the official Anthropic API
+- Added Anthropic provider for access to Claude models through the official Anthropic API:
+  - Compatible with `repo`, `plan`, and `doc` commands
+  - Supports Claude-3.5 Sonnet model with 8192 token limit
+  - Best used with `--max-tokens` parameter to respect model limits
 - Introduced the new MCP command collection:
   - Added `mcp search` command to discover servers from the MCP Marketplace based on capabilities and requirements
   - Added `mcp run` command to execute tools from MCP servers using natural language queries
