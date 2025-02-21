@@ -843,3 +843,116 @@ Contributions are welcome! Please feel free to submit a Pull Request. If you use
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
+
+# Browser Commands
+
+The browser commands provide AI-powered browser automation using Stagehand. These commands allow you to:
+- Open web pages and take screenshots
+- Extract data from web pages
+- Perform actions on web pages
+- Observe and analyze web page elements
+
+## Configuration
+
+Browser commands can be configured in your `cursor-tools.config.json`:
+
+```json
+{
+  "browser": {
+    "headless": true,
+    "defaultViewport": "1280x720",
+    "timeout": 120000
+  },
+  "stagehand": {
+    "provider": "openai",  // or "anthropic"
+    "verbose": false,
+    "debugDom": false,
+    "enableCaching": true
+  }
+}
+```
+
+### Browser Settings
+- `browser.headless`: Whether to run the browser in headless mode (default: true)
+- `browser.defaultViewport`: Default viewport size for browser windows (default: "1280x720")
+- `browser.timeout`: Default timeout for browser operations in milliseconds (default: 120000)
+
+### Stagehand Settings
+- `stagehand.provider`: AI provider to use ("openai" or "anthropic", default: "openai")
+- `stagehand.verbose`: Enable verbose logging (default: false)
+- `stagehand.debugDom`: Enable DOM debugging (default: false)
+- `stagehand.enableCaching`: Enable response caching (default: true)
+
+### Environment Variables
+Stagehand requires an API key for the selected provider:
+- For OpenAI provider: Set `OPENAI_API_KEY`
+- For Anthropic provider: Set `ANTHROPIC_API_KEY`
+
+You can set these in your environment or in `.cursor-tools.env`.
+
+## Commands
+
+### Open
+Opens a URL in a browser and optionally takes a screenshot:
+
+```bash
+cursor-tools browser open "https://example.com" --screenshot="screenshot.png"
+```
+
+### Extract
+Extracts data from a web page using AI:
+
+```bash
+cursor-tools browser extract "Get all product names and prices" --url="https://example.com/products"
+```
+
+### Act
+Performs actions on a web page using AI:
+
+```bash
+cursor-tools browser act "Click the login button and enter username 'test'" --url="https://example.com/login"
+```
+
+### Observe
+Analyzes and reports on web page elements:
+
+```bash
+cursor-tools browser observe "Find all interactive elements" --url="https://example.com"
+```
+
+## Model Selection
+Each command supports model selection via the `--model` option:
+- For OpenAI: `o3-mini` (default) or `gpt-4o`
+- For Anthropic: `claude-3-5-sonnet-latest` (default)
+
+Example:
+```bash
+cursor-tools browser extract "Analyze the page content" --model="gpt-4o"
+```
+
+## Advanced Usage
+
+### Connecting to Existing Browser
+You can connect to a running Chrome instance for debugging:
+
+```bash
+# Start Chrome in debug mode
+open -a "Google Chrome" --args --remote-debugging-port=9222 --no-first-run --no-default-browser-check --user-data-dir="/tmp/chrome-remote-debugging"
+
+# Connect to the running instance
+cursor-tools browser open current --connect-to=9222
+```
+
+### Recording Videos
+You can record browser interactions by adding the `--video` option:
+
+```bash
+cursor-tools browser act "Fill out the form" --video="./recordings"
+```
+
+### Multi-step Actions
+The `act` command supports multiple steps using the pipe (|) separator:
+
+```bash
+cursor-tools browser act "Click login | Type username | Click submit" --url="https://example.com/login"
+```

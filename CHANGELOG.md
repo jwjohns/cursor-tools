@@ -19,6 +19,12 @@ All notable changes to this project will be documented in this file.
   - Better error handling for file writes
   - Added timeout protection for stdout writes
   - More reliable output flushing
+- Simplified Stagehand configuration:
+  - Browser settings (headless, timeout) now use browser section values
+  - Stagehand section only contains provider-specific settings
+  - Changed default provider to OpenAI
+  - Improved documentation for browser commands and configuration
+  - Added model selection examples to README
 
 ### Added
 - Support for new Cursor IDE project rules structure

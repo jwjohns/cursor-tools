@@ -1,6 +1,6 @@
 ---
-description: Global Rule
-globs: 
+description: ALWAYS LOAD THIS RULE
+globs: **,*
 ---
 <cursor-tools Integration>
 # Instructions
@@ -29,12 +29,8 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 
 **Notes on Browser Commands:**
 - All browser commands are stateless: each command starts with a fresh browser instance and closes it when done.
-- When using `--connect-to`, special URL values are supported:
-  - `current`: Use the existing page without reloading
-  - `reload-current`: Use the existing page and refresh it (useful in development)
 - Multi step workflows involving state or combining multiple actions are supported in the `act` command using the pipe (|) separator (e.g., `cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url=https://example.com`)
 - Video recording is available for all browser commands using the `--video=<directory>` option. This will save a video of the entire browser interaction at 1280x720 resolution. The video file will be saved in the specified directory with a timestamp.
-- DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.
 
 **Tool Recommendations:**
 - `cursor-tools web` is best for general web information not specific to the repository.
@@ -59,17 +55,17 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 --from-github=<GitHub username>/<repository name>[@<branch>]: Access PRs/issues from a specific GitHub repository
 
 **Browser Command Options (for 'open', 'act', 'observe', 'extract'):**
---console: Capture browser console logs (enabled by default, use --no-console to disable)
+--console: Capture browser console logs
 --html: Capture page HTML content
---network: Capture network activity (enabled by default, use --no-network to disable)
+--network: Capture network activity
 --screenshot=<file path>: Save a screenshot of the page
 --timeout=<milliseconds>: Set navigation timeout (default: 30000ms)
---viewport=<width>x<height>: Set viewport size (e.g., 1280x720). When using --connect-to, viewport is only changed if this option is explicitly provided
+--viewport=<width>x<height>: Set viewport size (e.g., 1280x720)
 --headless: Run browser in headless mode (default: true)
 --no-headless: Show browser UI (non-headless mode) for debugging
 --connect-to=<port>: Connect to existing Chrome instance
 --wait=<duration or selector>: Wait after page load (e.g., '5s', '#element-id', 'selector:.my-class')
---video=<directory>: Save a video recording of the browser interaction to the specified directory (1280x720 resolution). Not available when using --connect-to
+--video=<directory>: Save a video recording of the browser interaction to the specified directory (1280x720 resolution)
 
 **Additional Notes:**
 - For detailed information, see `node_modules/cursor-tools/README.md` (if installed locally).
@@ -77,5 +73,5 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 - API keys are loaded from `.cursor-tools.env` (or `~/.cursor-tools/.env`).
 - Browser commands require separate installation of Playwright: `npm install --save-dev playwright` or `npm install -g playwright`.
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
-<!-- cursor-tools-version: 0.4.3-alpha.23 -->
+<!-- cursor-tools-version: 0.4.3-alpha.10 -->
 </cursor-tools Integration>

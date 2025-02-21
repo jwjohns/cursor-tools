@@ -1,5 +1,7 @@
 import { z } from 'zod';
 import { exhaustiveMatchGuard } from '../../../utils/exhaustiveMatchGuard';
+import { Config } from '../../../types';
+
 
 // Define available models
 export const availableModels = z.enum(['claude-3-5-sonnet-latest', 'o3-mini', 'gpt-4o']);
@@ -12,65 +14,32 @@ export interface StagehandConfig {
   verbose: boolean;
   debugDom: boolean;
   enableCaching: boolean;
-  timeout?: number;
+  timeout: number;
   model?: string;
 }
 
-interface BrowserConfig {
-  headless?: boolean;
-  defaultViewport?: string;
-  timeout?: number;
-  stagehand?: {
-    provider?: string;
-    headless?: boolean;
-    verbose?: boolean;
-    debugDom?: boolean;
-    enableCaching?: boolean;
-    timeout?: number;
-    model?: string;
-  };
-}
-
-interface Config {
-  browser?: BrowserConfig;
-}
-
 export function loadStagehandConfig(config: Config): StagehandConfig {
-  const browserConfig = config.browser || {};
-  const stagehandConfig = browserConfig.stagehand || {};
+  const browserConfig = config.browser;
+  const stagehandConfig = config.stagehand;
 
   // Set default values
-  const headless = stagehandConfig.headless ?? true;
-  const verbose = stagehandConfig.verbose ?? false;
-  const debugDom = stagehandConfig.debugDom ?? false;
-  const enableCaching = stagehandConfig.enableCaching ?? false;
-  const timeout = stagehandConfig.timeout ?? 120000;
-  let provider: 'anthropic' | 'openai' | undefined = stagehandConfig.provider?.toLowerCase() as any;
+  const headless = browserConfig?.headless ?? true;
+  const verbose = stagehandConfig?.verbose ?? false;
+  const debugDom = stagehandConfig?.debugDom ?? false;
+  const enableCaching = stagehandConfig?.enableCaching ?? false;
+  const timeout = browserConfig?.timeout ?? 120000;
+  let provider: 'anthropic' | 'openai' = stagehandConfig?.provider?.toLowerCase() as any || 'anthropic';
 
-  if (!provider) {
-    // Set provider based on available API keys
-    if (process.env.ANTHROPIC_API_KEY) {
-      provider = 'anthropic';
-      if (process.env.OPENAI_API_KEY) {
-        console.log('Defaulting to anthropic as AI provider for Stagehand');
+  // Validate provider and API key
+  switch (provider) {
+    case 'anthropic': {
+      if (!process.env.ANTHROPIC_API_KEY) {
+        throw new Error(
+          'ANTHROPIC_API_KEY is required when Stagehand is configured to use Anthropic. Please set it in your environment or add it to ~/.cursor-tools/.env file.'
+        );
       }
-    } else if (process.env.OPENAI_API_KEY) {
-      provider = 'openai';
-    } else {
-      throw new Error(
-        'Either ANTHROPIC_API_KEY or OPENAI_API_KEY is required for Stagehand. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
-      );
+      break;
     }
-  } else {
-    switch (provider) {
-      case 'anthropic': {
-        if (!process.env.ANTHROPIC_API_KEY) {
-          throw new Error(
-            'ANTHROPIC_API_KEY is required for when Stagehand is configured to use Anthropic. Please set one in your environment or add it to ~/.cursor-tools/.env file.'
-          );
-        }
-        break;
-      }
       case 'openai': {
         if (!process.env.OPENAI_API_KEY) {
           throw new Error(
@@ -82,7 +51,7 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
       default:
         throw exhaustiveMatchGuard(provider, 'Unrecognized AI provider for stagehand');
     }
-  }
+  
 
   return {
     provider,
@@ -91,7 +60,7 @@ export function loadStagehandConfig(config: Config): StagehandConfig {
     debugDom,
     enableCaching,
     timeout,
-    model: stagehandConfig.model,
+    model: stagehandConfig?.model,
   };
 }
 
@@ -160,12 +129,5 @@ export function getStagehandModel(
   }
 
   // Otherwise use defaults based on provider
-  switch (config.provider) {
-    case 'anthropic': {
-      return 'claude-3-5-sonnet-latest';
-    }
-    case 'openai': {
-      return 'o3-mini';
-    }
-  }
+  return config.provider === 'anthropic' ? 'claude-3-5-sonnet-latest' : 'gpt-4o';
 }

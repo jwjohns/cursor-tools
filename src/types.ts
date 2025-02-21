@@ -68,6 +68,7 @@ export interface Config {
   };
   stagehand?: {
     provider: 'anthropic' | 'openai';
+    model?: string;
     verbose?: boolean;
     debugDom?: boolean;
     enableCaching?: boolean;
