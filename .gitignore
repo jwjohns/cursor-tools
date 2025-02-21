@@ -1,1 +1,4 @@
-.repomix-*
+*
+!.gitignore
+!.cursorrules
+!README.md
