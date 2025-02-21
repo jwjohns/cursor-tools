@@ -1,0 +1,71 @@
+Querying perplexity using sonar-pro for: MCP directories for available MCP servers: What MCP directory services exist for discovering available MCP servers? Provide examples, configuration details, and documentation references on how to query these directories. with maxTokens: 8000
+Several MCP directory services exist for discovering available MCP servers:
+
+1. MCP Directory (mcp.so)
+
+This is an open-source directory for MCP servers hosted at https://mcp.so[6]. 
+
+Key features:
+- Live preview of available servers
+- Searchable database
+- Community-driven submissions
+
+To use it:
+- Visit https://mcp.so in a web browser
+- Search or browse the listed MCP servers
+- View details like features, configuration instructions, and usage examples for each server
+
+2. GitHub MCP Directory
+
+There's a GitHub repository that serves as a directory for MCP servers:
+
+https://github.com/chatmcp/mcp-directory[6]
+
+To use this:
+- Clone the repository
+- Install dependencies with `pnpm install`
+- Set up a Supabase database and configure environment variables
+- Run `pnpm dev` to start the local server
+- Access the directory at http://localhost:3000
+
+3. Cline MCP Server Discovery
+
+Cline provides automated discovery of MCP servers:
+
+- Cline can automatically add MCP servers to its list
+- It can clone and build servers directly from GitHub repositories[5]
+
+To use Cline's discovery:
+- Install Cline
+- Use its interface to search for and add MCP servers
+- Provide GitHub repository URLs for servers you want to build
+
+4. MCP Compass
+
+This is a discovery and recommendation service for MCP servers:
+
+https://github.com/liuyoshio/mcp-compass[8]
+
+Key features:
+- Natural language queries to find MCP services
+- Detailed metadata for each service
+- Real-time updates of available services
+
+To use MCP Compass:
+- Clone the repository or use npx
+- Integrate it with an AI assistant by adding it to the MCP configuration
+
+Example configuration:
+
+```json
+{
+  "mcpServers": {
+    "mcp-compass": {
+      "command": "npx",
+      "args": ["-y", "@liuyoshio/mcp-compass"]
+    }
+  }
+}
+```
+
+These directory services provide various ways to discover and explore available MCP servers, ranging from web-based interfaces to programmatic integrations with AI assistants. They offer features like search functionality, detailed metadata, and easy integration options to help users find the most suitable MCP servers for their needs.

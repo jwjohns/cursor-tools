@@ -318,10 +318,10 @@ export class InstallCommand implements Command {
             existingContent.slice(0, startIndex) +
             CURSOR_RULES_TEMPLATE.trim() +
             existingContent.slice(endIndex + endTag.length);
-          writeFileSync(result.targetPath, newContent);
+          writeFileSync(result.targetPath, newContent.trim());
         } else {
           // Append new section
-          writeFileSync(result.targetPath, existingContent.trim() + '\n\n' + CURSOR_RULES_TEMPLATE);
+          writeFileSync(result.targetPath, (existingContent.trim() + '\n\n' + CURSOR_RULES_TEMPLATE).trim() + '\n');
         }
       }
 
