@@ -4,12 +4,12 @@ import { MarketplaceManager } from './marketplace.js';
 export class SearchCommand implements Command {
   constructor(private marketplaceManager: MarketplaceManager) {}
 
-  async *execute(query: string, options?: CommandOptions): CommandGenerator {
+  async *execute(query: string, options: CommandOptions): CommandGenerator {
     if (!query?.trim()) {
       throw new Error('Search query cannot be empty');
     }
 
-    const servers = await this.marketplaceManager.searchServers(query);
+    const servers = await this.marketplaceManager.searchServers(query, options);
     if (servers.length === 0) {
       yield 'No servers found matching your query.\n';
       return;

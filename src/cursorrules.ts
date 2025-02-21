@@ -72,6 +72,21 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 \`cursor-tools github pr [number]\` - Get the last 10 PRs, or a specific PR by number (e.g., \`cursor-tools github pr 123\`)
 \`cursor-tools github issue [number]\` - Get the last 10 issues, or a specific issue by number (e.g., \`cursor-tools github issue 456\`)
 
+**Model Context Protocol (MCP) Commands:**
+Use the following commands to interact with MCP servers and their specialized tools:
+\`cursor-tools mcp search "<query>"\` - Search the MCP Marketplace for available servers that match your needs (e.g., \`cursor-tools mcp search "git repository management"\`)
+\`cursor-tools mcp run "<query>"\` - Execute MCP server tools using natural language queries (e.g., \`cursor-tools mcp run "list files in the current directory"\`). The query must include sufficient information for cursor-tools to determine which server to use, provide plenty of context.
+
+The \`search\` command helps you discover servers in the MCP Marketplace based on their capabilities and your requirements. The \`run\` command automatically selects and executes appropriate tools from these servers based on your natural language queries. If you want to use a specific server include the server name in your query. E.g. \`cursor-tools mcp run "using the mcp-server-sqlite list files in directory"
+
+**MCP Command Options:**
+- \`--server=<server-name>\`: Use a specific MCP server (for \`run\` command)
+
+**Notes:**
+- MCP commands require \`ANTHROPIC_API_KEY\` to be set in your environment
+- Results are streamed in real-time for immediate feedback
+- Tool calls are automatically cached to prevent redundant operations
+
 **Stagehand Browser Automation:**
 \`cursor-tools browser open <url> [options]\` - Open a URL and capture page content, console logs, and network activity (e.g., \`cursor-tools browser open "https://example.com" --html\`)
 \`cursor-tools browser act "<instruction>" --url=<url> [options]\` - Execute actions on a webpage using natural language instructions (e.g., \`cursor-tools browser act "Click Login" --url=https://example.com\`)
@@ -93,6 +108,7 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 - \`cursor-tools plan\` is ideal for planning tasks. E.g. \`cursor-tools plan "Adding authentication with social login using Google and Github"\`
 - \`cursor-tools doc\` generates documentation for local or remote repositories
 - \`cursor-tools browser\` is useful for testing and debugging web apps and uses Stagehand
+- \`cursor-tools mcp\` enables interaction with specialized tools through MCP servers (e.g., for Git operations, file system tasks, or custom tools)
 
 **Running Commands:**
 1. **Installed version:** Use \`cursor-tools <command>\` (if in PATH) or \`npm exec cursor-tools "<command>"\`, \`yarn cursor-tools "<command>"\`, \`pnpm cursor-tools "<command>"\`.
@@ -109,6 +125,9 @@ when using doc for remote repos suggest writing the output to a file somewhere l
 --provider=<provider>: AI provider to use (gemini, openai, openrouter, perplexity, or modelbox)
 --model=<model>: Model to use for repository analysis
 --max-tokens=<number>: Maximum tokens for response
+
+**MCP Command Options:**
+--server=<server-name>: Use a specific MCP server
 
 **Documentation Command Options:**
 --from-github=<GitHub username>/<repository name>[@<branch>]: Generate documentation for a remote GitHub repository
@@ -149,6 +168,7 @@ Stagehand is a nickname for cursor-tools browser
 - Available models depend on your configured provider (OpenAI or Anthropic) in \`cursor-tools.config.json\`.
 - repo has a limit of 2M tokens of context. The context can be reduced by filtering out files in a .repomixignore file.
 - problems running browser commands may be because playwright is not installed. Recommend installing playwright globally.
+- MCP commands require \`ANTHROPIC_API_KEY\` to be set in your environment.
 - **Remember:** You're part of a team of superhuman expert AIs. Work together to solve complex problems.
 
 <!-- cursor-tools-version: ${CURSOR_RULES_VERSION} -->
@@ -203,6 +223,9 @@ export function checkCursorRules(workspacePath: string): CursorRulesResult {
   const legacyExists = existsSync(legacyPath);
   const newExists = existsSync(newPath);
 
+  const useLegacy =
+    process.env.USE_LEGACY_CURSORRULES === 'true' || !process.env.USE_LEGACY_CURSORRULES;
+
   // If neither exists, prefer new path
   if (!legacyExists && !newExists) {
     return {
@@ -210,17 +233,14 @@ export function checkCursorRules(workspacePath: string): CursorRulesResult {
       needsUpdate: true,
       message:
         'No cursor rules file found. Run `cursor-tools install .` to set up Cursor integration.',
-      targetPath: newPath,
+      targetPath: useLegacy ? legacyPath : newPath,
       hasLegacyCursorRulesFile: false,
     };
   }
 
   try {
-    const useLegacy =
-      process.env.USE_LEGACY_CURSORRULES === 'true' || !process.env.USE_LEGACY_CURSORRULES;
-
     // If both exist, prioritize based on USE_LEGACY_CURSORRULES
-    if (newExists && legacyExists) {
+    if (legacyExists) {
       if (useLegacy) {
         readFileSync(legacyPath, 'utf-8'); // Read to check if readable
         return {
@@ -230,13 +250,22 @@ export function checkCursorRules(workspacePath: string): CursorRulesResult {
           hasLegacyCursorRulesFile: true,
         };
       } else {
+        if (!newExists) {
+          return {
+            kind: 'success',
+            needsUpdate: true,
+            message: 'No cursor-tools.mdc file found. Run `cursor-tools install .` to update.',
+            targetPath: newPath,
+            hasLegacyCursorRulesFile: legacyExists,
+          };
+        }
         const newContent = readFileSync(newPath, 'utf-8');
         const result = isCursorRulesContentUpToDate(newContent);
         return {
           kind: 'success',
           ...result,
           targetPath: newPath,
-          hasLegacyCursorRulesFile: true,
+          hasLegacyCursorRulesFile: legacyExists,
         };
       }
     }

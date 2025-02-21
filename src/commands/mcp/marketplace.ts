@@ -51,14 +51,12 @@ const fetchFromMCPDirectory = once(async (): Promise<MarketplaceData> => {
 export class MarketplaceManager {
   constructor(private config: Config) {}
 
-
-
   async getMarketplaceData(): Promise<MarketplaceData> {
     return fetchFromMCPDirectory();
   }
 
-  async findServersForIntent(query: string): Promise<MCPServer[]> {
-    const matches = await this.searchServers(query);
+  async findServersForIntent(query: string, options: { debug: boolean }): Promise<MCPServer[]> {
+    const matches = await this.searchServers(query, options);
     return matches;
   }
 
@@ -69,26 +67,21 @@ export class MarketplaceManager {
       const [root, treePath] = githubUrl.split('/tree/', 2);
 
       let paths = [];
-      if(treePath) {
+      if (treePath) {
         paths.push(treePath);
       } else {
         paths.push('main', 'master', 'develop');
       }
 
       // Try common README file patterns
-      const readmePatterns = [
-        'README.md',
-        'README',
-        'Readme.md',
-        'readme.md'
-      ];
+      const readmePatterns = ['README.md', 'README', 'Readme.md', 'readme.md'];
 
       for (const path of paths) {
         for (const pattern of readmePatterns) {
           const readmeUrl = `${root.replace('github.com', 'raw.githubusercontent.com')}/${path}/${pattern}`;
           console.log(readmeUrl);
           console.log(`Attempting to fetch README from: ${readmeUrl}`);
-          
+
           const response = await fetch(readmeUrl);
           if (response.ok) {
             return await response.text();
@@ -104,7 +97,7 @@ export class MarketplaceManager {
     }
   }
 
-  async searchServers(query: string): Promise<MCPServer[]> {
+  async searchServers(query: string, options: { debug: boolean }): Promise<MCPServer[]> {
     const marketplaceData = await this.getMarketplaceData();
 
     // Use Gemini to find semantic matches
@@ -124,19 +117,24 @@ ${JSON.stringify(marketplaceData.servers, null, 2)}`;
         maxTokens: 1000,
         systemPrompt:
           'You are a semantic search expert that helps find the most relevant MCP servers based on user queries. You only return mcpIds as a comma separated list, no other text.',
+        debug: options.debug,
       });
 
       // Parse the response by removing all possible formatting characters and splitting on commas
-      const matchingIds = new Set(response
-        .replace(/[[\](){}"'`]/g, '') // Remove all brackets, braces, quotes
-        .replace(/\s+/g, ' ') // Normalize whitespace
-        .split(',')
-        .map((id) => id.trim().toLowerCase())
-        .filter((id) => id.length > 0)); // Remove empty entries
+      const matchingIds = new Set(
+        response
+          .replace(/[[\](){}"'`]/g, '') // Remove all brackets, braces, quotes
+          .replace(/\s+/g, ' ') // Normalize whitespace
+          .split(',')
+          .map((id) => id.trim().toLowerCase())
+          .filter((id) => id.length > 0)
+      ); // Remove empty entries
 
       // Get matching servers and fetch their READMEs
-      const matchingServers = marketplaceData.servers.filter((server) =>
-        matchingIds.has(server.mcpId.toLowerCase()) || matchingIds.has(server.githubUrl.toLowerCase())
+      const matchingServers = marketplaceData.servers.filter(
+        (server) =>
+          matchingIds.has(server.mcpId.toLowerCase()) ||
+          matchingIds.has(server.githubUrl.toLowerCase())
       );
 
       // Fetch READMEs for all matching servers in parallel
@@ -148,7 +146,7 @@ ${JSON.stringify(marketplaceData.servers, null, 2)}`;
           }
           return {
             ...server,
-            readme: readme || undefined // Only include readme if it was found
+            readme: readme || undefined, // Only include readme if it was found
           };
         })
       );

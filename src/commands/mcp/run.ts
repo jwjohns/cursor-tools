@@ -1,6 +1,6 @@
 import type { Command, CommandGenerator, CommandOptions } from '../../types';
 import { MarketplaceManager, type MCPServer } from './marketplace.js';
-import { MCPClient } from './client/MCPClient.js';
+import { InternalMessage, MCPClient } from './client/MCPClient.js';
 import { MCPConfigError } from './client/errors.js';
 import { createProvider } from '../../providers/base';
 import { once } from '../../utils/once.js';
@@ -11,18 +11,17 @@ const execFile = promisify(execFileCallback);
 
 function populateEnv(requiredEnv: Record<string, string>): Record<string, string> {
   const populatedEnv: Record<string, string> = {};
-  
+
   for (const [key, _] of Object.entries(requiredEnv)) {
-    
     // Otherwise check process.env
     const envValue = process.env[key];
     if (!envValue) {
       throw new MCPConfigError(`Required environment variable "${key}" is not set`);
     }
-    
+
     populatedEnv[key] = envValue;
   }
-  
+
   populatedEnv['PATH'] = process.env.PATH || '';
   return populatedEnv;
 }
@@ -58,8 +57,12 @@ const pathToNpx = once(async (): Promise<string> => {
 export class RunCommand implements Command {
   constructor(private marketplaceManager: MarketplaceManager) {}
 
-  private async selectServer(query: string, specifiedServer?: string): Promise<MCPServer[]> {
-    const marketplaceData = await this.marketplaceManager.getMarketplaceData();
+  private async selectServer(
+    query: string,
+    options: CommandOptions,
+    marketplaceData: { servers: MCPServer[] }
+  ): Promise<MCPServer[]> {
+    const specifiedServer = options.server;
 
     // If server is specified, try to find it
     if (specifiedServer) {
@@ -71,7 +74,7 @@ export class RunCommand implements Command {
     }
 
     // Otherwise, find servers based on intent
-    const servers = await this.marketplaceManager.findServersForIntent(query);
+    const servers = await this.marketplaceManager.findServersForIntent(query, options);
     if (servers.length === 0) {
       throw new MCPConfigError('No suitable servers found for the given query');
     }
@@ -79,7 +82,12 @@ export class RunCommand implements Command {
     return servers;
   }
 
-  private async generateMCPConfig(query: string, server: MCPServer): Promise<{
+  private async generateMCPConfig(
+    query: string,
+    server: MCPServer,
+    options: CommandOptions,
+    { fail }: { fail: boolean }
+  ): Promise<{
     command: 'uvx' | 'npx';
     args: string[];
     env: Record<string, string>;
@@ -87,7 +95,7 @@ export class RunCommand implements Command {
     // Use Gemini to generate appropriate arguments
     const provider = createProvider('gemini');
 
-    const {readme, ...serverDetails} = server;
+    const { readme, ...serverDetails } = server;
     const prompt = `You are an expert engineer. Your job is to create json configurations for running MCP servers based on the README of the given mcp server, and the user query.
 
 IMPORTANT: You must return a JSON object in EXACTLY this format:
@@ -95,7 +103,7 @@ IMPORTANT: You must return a JSON object in EXACTLY this format:
   "mcpServers": {
     "<mcpServerId>": {
       "command": "<uvx | npx>",
-      "args": [<"-y" in the case of npx>, "<server command>", "<server argument 1>", "<server argument 2>", ...],
+      "args": ["<server package name>", "<server argument 1>", "<server argument 2>", ...],
       "env": {
         "<env var name>": "YOUR_ENV_VAR_VALUE"
       }
@@ -105,15 +113,22 @@ IMPORTANT: You must return a JSON object in EXACTLY this format:
 
 Do not return an array or any other format. The response must be a JSON object with a "mcpServers" key containing a "git" key with "command" and "args" properties.
 
-The <server command> argument MUST exactly match the command in the README.md file for the given mcp server.
+The <server package name> argument MUST exactly match the command in the README.md file for the given mcp server.
 Given a user query and the mcp server details, generate the appropriate mcp server configuration as a json object. Make sure to identify placeholders in README commands such as /path/to/file and replace them with user provided values. Do not return placeholders in the response.
 
-Note the current directory is '${process.cwd()}' you can use this as a path for inputs and outputs.
-The command should always be "uvx" or "npx" for running MCP servers. If the server provides instructions mentioning node then use npx. If the server provides instructions mentioning python then use uvx.
+Python server that have pip install <name> or uv run <name> can commands can be run with uvx as command: "uvx", args: ["<name>", ...remaining_args].
+Node servers that are hosted on github can be run with npx using command: "npx", args: ["-y", "github:<user>/<repo>", ...remaining_args] although running with npx <npm package name> is preferred.
 
-IMPORTANT: If this is a retry attempt with an error message, analyze the error and adjust the configuration accordingly. Focus on fixing the specific issue mentioned in the error.
+Note the current directory is '${process.cwd()}' you can use this as a path for inputs and outputs.
+The command should always be "uvx" (for python servers) or "npx" (for node servers). Do not attempt to run python servers with npx or node servers with uvx. Note the uv command with --directory cannot be used as it requires checking out the source code for the server which is not practical.
+
+IMPORTANT: If this is a retry attempt with an error message, analyze the error and adjust the configuration accordingly. Focus on fixing the specific issue mentioned in the error. Do not repeat the same configurations that have already been tried.
 
 User Query: "${query}"
+
+<Server Details>
+${JSON.stringify(serverDetails, null, 2)}
+</Server Details>
 
 <README>
 ${readme}
@@ -122,69 +137,83 @@ ${readme}
 Check the required environment variables against the available environment variables below. If any required environment variables mentioned in the README are not available, particularly API keys, respond with a json object with the key "needsMoreInfo" and the value being a string of the information you need.
 
 <Available Environment Variables>
-${Object.keys(process.env).map(key => `${key}`).join('\n')}
+${Object.keys(process.env)
+  .map((key) => `${key}`)
+  .join('\n')}
 </Available Environment Variables>
 
-Return ONLY a JSON object in the exact format shown above.
-DO NOT include markdown formatting, backticks, or any other text. Just the raw JSON object.
+${fail ? 'Please return a json object with the key "needsMoreInfo" and the value being a string explaining the error and what further information you need that might help create a valid configuration. Do not return any other text.' : 'Return ONLY a JSON object in the exact format shown above. DO NOT include markdown formatting, backticks, or any other text. Just the raw JSON object.'}
 
-HOWEVER if the server details show that you need more information from the user that is not included in the user query, respond with a json object with the key "needsMoreInfo" and the value being a string of the information you need.`;
+HOWEVER if the server details show that you cannot run with uvx or npx, or if you need more information from the user that is not included in the user query, respond with a json object with the key "needsMoreInfo" and the value being a string of the information you need.`;
 
     try {
       const response = await provider.executePrompt(prompt, {
         model: 'gemini-2.0-flash',
         maxTokens: 1000,
-        systemPrompt: 'You are an expert at generating MCP server arguments. You only return a raw JSON object, no markdown, no backticks, no other text.',
+        systemPrompt:
+          'You are an expert at generating MCP server arguments. You only return a raw JSON object, no markdown, no backticks, no other text.',
+        debug: options.debug,
       });
 
       // Clean the response of any markdown formatting
       const cleanedResponse = response.replace(/```(?:json)?\n([\s\S]*?)\n```/g, '$1').trim();
-      
+
       // Parse the response and ensure it's an array of strings
       let args = JSON.parse(cleanedResponse);
       console.log('server config', JSON.stringify(args, null, 2));
-      if(Array.isArray(args) && (args[0] === 'uvx' || args[0] === 'npx')) {
+      if (Array.isArray(args) && (args[0] === 'uvx' || args[0] === 'npx')) {
         args = {
           mcpServers: {
             git: {
               command: args[0],
-              args: args.slice(1)
-            }
-          }
-        }
+              args: args.slice(1),
+            },
+          },
+        };
       }
 
-      if(args.needsMoreInfo) {
-        throw new Error(`We need more information from you to generate the MCP server configuration. Please re run the command provide the following information: ${args.needsMoreInfo}`);
+      if (args.needsMoreInfo) {
+        throw new Error(
+          `We need more information from you to generate the MCP server configuration. Please re run the command provide the following information: ${args.needsMoreInfo}`
+        );
       }
 
       const keys = Object.keys(args.mcpServers);
-      if(!keys || keys.length !== 1) {
+      if (!keys || keys.length !== 1) {
         throw new Error('Invalid argument format returned by AI, unexpected number of keys');
       }
-      
+
       const serverName = keys[0];
       const serverConfig = args.mcpServers[serverName];
 
-      if(serverConfig.command !== 'uvx' && serverConfig.command !== 'npx') {
-        throw new Error('Invalid command returned by AI');
+      if (serverConfig.command !== 'uvx' && serverConfig.command !== 'npx') {
+        throw new Error(`Invalid command returned by AI: ${serverConfig.command}`);
       }
-      if(!Array.isArray(serverConfig.args)) {
+      if (!Array.isArray(serverConfig.args)) {
         throw new Error('Invalid args returned by AI');
       }
 
-      if(serverConfig.command !== 'uvx' && serverConfig.command !== 'npx') {
+      if (serverConfig.command !== 'uvx' && serverConfig.command !== 'npx') {
         throw new Error('Invalid command returned by AI');
       }
 
       const env = 'env' in serverConfig ? serverConfig.env : {};
 
-      switch(serverConfig.command) {
+      switch (serverConfig.command) {
         case 'uvx':
           serverConfig.command = await pathToUvx();
+          if (serverConfig.args?.[0] === 'run') {
+            serverConfig.args.shift(); // sometimes uv run can be dealy with by uvx
+          }
           break;
         case 'npx':
           serverConfig.command = await pathToNpx();
+          if (serverConfig.args?.[0].startsWith('github.com/')) {
+            serverConfig.args[0] = serverConfig.args[0].replace('github.com/', 'github:');
+          }
+          if (serverConfig.args?.[0] !== '-y') {
+            serverConfig.args.unshift('-y');
+          }
           break;
         default:
           throw new Error('Invalid command returned by AI: ' + serverConfig.command);
@@ -192,7 +221,7 @@ HOWEVER if the server details show that you need more information from the user 
       return {
         command: serverConfig.command,
         args: serverConfig.args,
-        env: populateEnv(env)
+        env: populateEnv(env),
       };
     } catch (error) {
       console.error('Error generating MCP config:', error);
@@ -201,94 +230,162 @@ HOWEVER if the server details show that you need more information from the user 
     }
   }
 
-  async *execute(query: string, options?: CommandOptions): CommandGenerator {
-    if (!query?.trim()) {
+  async *execute(queryInput: string, options: CommandOptions): CommandGenerator {
+    if (!queryInput?.trim()) {
       throw new Error('Query cannot be empty');
     }
 
+    // Fetch marketplace data first
+    const marketplaceData = await this.marketplaceManager.getMarketplaceData();
+
     // Select appropriate servers
-    let servers = await this.selectServer(query, options?.server);
+    let servers = await this.selectServer(queryInput, options, marketplaceData);
     if (!Array.isArray(servers)) {
       // If single server returned, convert to array for consistent handling
       servers = [servers];
     }
-    
+    if (servers.length > 3) {
+      console.log('More than 3 candidate servers, asking AI to narrow down the selection', servers);
+      const query = `I want to choose at most 5 MCP servers from the provided list to satisfy the query '${queryInput}'. Please select the most relevant and likely to run, taking into account the README and that we have the following environment variables <Environment variables>${Object.keys(
+        process.env
+      )
+        .map((key) => `${key}`)
+        .join(
+          '\n'
+        )}</Environment variables>. Choose the most likely to run. Return no more than 5 MCP servers.`;
+      servers = await this.selectServer(query, options, { servers });
+      if (!Array.isArray(servers)) {
+        // If single server returned, convert to array for consistent handling
+        servers = [servers];
+      }
+      if (servers.length > 5) {
+        servers = servers.slice(0, 5);
+      }
+    }
+
     if (servers.length === 0) {
       throw new Error('No suitable MCP servers found for the query');
     }
-    servers = servers.filter(s => !!s.readme?.trim());
+    servers = servers.filter((s) => !!s.readme?.trim());
     if (servers.length === 0) {
       throw new Error('No servers found with a README.md file');
     }
 
-    yield `Found ${servers.length} matching MCP server(s):\n${servers.map(s => `- ${s.name}`).join('\n')}\n`;
+    yield `Found ${servers.length} matching MCP server(s):\n${servers.map((s) => `- ${s.name}`).join('\n')}\n`;
 
     // Track successful clients for final processing
-    const successfulClients: { client: MCPClient; server: MCPServer }[] = [];
-    const failedServers: { server: MCPServer; error: string }[] = [];
-    const maxAttempts = 1;
+    const maxAttempts = 3;
     // Try to initialize each server with retries
-    for (const server of servers) {
-      yield `\nAttempting to initialize ${server.name}...\n`;
-      
-      // Generate initial arguments using AI
-      const serverConfig = await this.generateMCPConfig(query, server);
-      yield `Generated arguments for ${server.name}: ${JSON.stringify(serverConfig)}\n`;
+    const serverResults = await Promise.all(
+      servers.map(async (server) => {
+        let query = queryInput;
+        const yields: string[] = [];
+        yields.push(`\nAttempting to initialize ${server.name}...\n`);
 
-      // Initialize client with selected server and generated args
-      const client = new MCPClient({
-        command: serverConfig.command,
-        args: serverConfig.args,
-        env: serverConfig.env
-      });
+        let attempts = 0;
+        let lastError = '';
+        let success = false;
 
-      let attempts = 0;
-      let lastError = '';
-      let success = false;
+        while (attempts < maxAttempts && !success) {
+          let serverConfig: {
+            command: string;
+            args: string[];
+            env: Record<string, string>;
+          } | null = null;
+          try {
+            // Generate initial arguments using AI
 
-      while (attempts < maxAttempts && !success) {
-        try {
-          await client.start();
-          success = true;
-          successfulClients.push({ client, server });
-          yield `Successfully initialized ${server.name}\n`;
-        } catch (error) {
-          attempts++;
-          lastError = error instanceof Error ? error.message : String(error);
-          
-          if (attempts < maxAttempts) {
-            yield `Attempt ${attempts} for ${server.name} failed. Retrying with error feedback...\n`;
-            // Regenerate config with error feedback
-            const newConfig = await this.generateMCPConfig(
-              `${query}\n\nPrevious attempt failed with command: ${serverConfig.command} ${serverConfig.args.join(' ')}\nError: ${lastError}`,
-              server
+            try {
+              serverConfig = await this.generateMCPConfig(query, server, options, {
+                fail: attempts === maxAttempts - 1,
+              });
+            } catch (error) {
+              yields.push(`Error generating arguments for ${server.name}: ${error}\n`);
+              // these shouldbreak out of the loop
+              return { type: 'failure' as const, server, error: error, yields };
+            }
+            yields.push(
+              `Generated arguments for ${server.name}: ${JSON.stringify({ ...serverConfig, env: removeEnvValues(serverConfig.env) })}\n`
             );
-            
-            // Update client with new configuration
-            client.updateConfig({
-              command: newConfig.command,
-              args: newConfig.args,
-            });
-          } else {
-            yield `⚠️ Failed to initialize ${server.name} after ${maxAttempts} attempts. Last error: ${lastError}\n`;
-            failedServers.push({ server, error: lastError });
+
+            // Initialize client with selected server and generated args
+            const client = new MCPClient(
+              {
+                command: serverConfig.command,
+                args: serverConfig.args,
+                env: serverConfig.env,
+              },
+              options.debug
+            );
+            await client.start();
+            success = true;
+            yields.push(`Successfully initialized ${server.name}\n`);
+            return { type: 'success' as const, client, server, yields };
+          } catch (error) {
+            attempts++;
+            lastError = error instanceof Error ? error.message : String(error);
+            console.error(`Attempt ${attempts} for ${server.name} failed`, lastError);
+            if (attempts < maxAttempts) {
+              yields.push(
+                `Attempt ${attempts} for ${server.name} failed with error: ${lastError}. Retrying with error feedback...\n`
+              );
+              // Regenerate config with error feedback
+              query = `${query}\n\nPrevious attempt failed with configuration: ${JSON.stringify(serverConfig, null, 2)}\nError: ${lastError}`;
+            } else {
+              yields.push(
+                `⚠️ Failed to initialize ${server.name} after ${maxAttempts} attempts. Last error: ${lastError}\n`
+              );
+              return { type: 'failure' as const, server, error: lastError, yields };
+            }
           }
         }
-      }
-    }
+        // This should never happen due to the while loop condition, but TypeScript needs it
+        return { type: 'failure' as const, server, error: lastError, yields };
+      })
+    );
+
+    // // Yield all collected messages
+    // for (const result of serverResults) {
+    //   for (const message of result.yields) {
+    //     yield message;
+    //   }
+    // }
+
+    // Process results to get successful and failed servers
+    const successfulClients = serverResults.filter(
+      (
+        result
+      ): result is { type: 'success'; client: MCPClient; server: MCPServer; yields: string[] } =>
+        result.type === 'success'
+    );
+    const failedServers = serverResults.filter(
+      (result): result is { type: 'failure'; server: MCPServer; error: string; yields: string[] } =>
+        result.type === 'failure'
+    );
 
     // If no servers succeeded, throw error
     if (successfulClients.length === 0) {
-      throw new Error(`Failed to initialize any MCP servers after ${maxAttempts} attempts each. Failed servers:\n${
-        failedServers.map(f => `- ${f.server.name}: ${f.error}`).join('\n')
-      }`);
+      // log all yields
+      for (const result of serverResults) {
+        for (const msg of result.yields) {
+          console.log(`${result.server.name}: ${msg}`);
+        }
+      }
+
+      throw new Error(
+        `Failed to initialize any MCP servers after ${maxAttempts} attempts each. Failed servers:\n${failedServers
+          .map((f) => `- ${f.server.name}: ${f.error}`)
+          .join('\n')}`
+      );
     }
 
     // If some servers failed but others succeeded, log warning
     if (failedServers.length > 0) {
-      yield `\n⚠️ Warning: ${failedServers.length} server(s) failed to initialize:\n${
-        failedServers.map(f => `- ${f.server.name}: ${f.error}`).join('\n')
-      }\nContinuing with ${successfulClients.length} successful server(s)\n\n`;
+      yield `\n⚠️ Warning: ${failedServers.length} server(s) failed to initialize:\n${failedServers
+        .map((f) => `- ${f.server.name}`)
+        .join(
+          '\n'
+        )}\n\nContinuing with ${successfulClients.length} successful server(s)\n${successfulClients.map((c) => `- ${c.server.name}`).join('\n')}\n\n`;
     }
 
     try {
@@ -296,13 +393,13 @@ HOWEVER if the server details show that you need more information from the user 
       const allMessages = await Promise.all(
         successfulClients.map(async ({ client, server }) => {
           try {
-            const messages = await client.processQuery(query);
+            const messages = await client.processQuery(queryInput);
             return { server, messages, error: null };
           } catch (error) {
-            return { 
-              server, 
-              messages: null, 
-              error: error instanceof Error ? error.message : String(error) 
+            return {
+              server,
+              messages: null,
+              error: error instanceof Error ? error.message : String(error),
             };
           }
         })
@@ -312,8 +409,12 @@ HOWEVER if the server details show that you need more information from the user 
       if (options?.saveTo) {
         const fs = await import('node:fs/promises');
         await fs.writeFile(
-          options.saveTo, 
-          JSON.stringify(allMessages.filter(m => m.messages !== null), null, 2)
+          options.saveTo,
+          JSON.stringify(
+            allMessages.filter((m) => m.messages !== null),
+            null,
+            2
+          )
         );
         yield `Output saved to ${options.saveTo}\n`;
       }
@@ -325,8 +426,12 @@ HOWEVER if the server details show that you need more information from the user 
         } else if (result.messages) {
           yield `\n=== Results from ${result.server.name} ===\n`;
           for (const message of result.messages) {
-            yield message.content + '\n';
+            const msg = stringifyMessage(message.content, { debug: options.debug });
+            if (msg.trim()) {
+              yield msg + '\n';
+            }
           }
+          yield `\n=== End of ${result.server.name} ===\n`;
         }
       }
     } finally {
@@ -336,4 +441,35 @@ HOWEVER if the server details show that you need more information from the user 
   }
 }
 
+function stringifyMessage(
+  message: InternalMessage['content'] | InternalMessage['content'][number],
+  { debug }: { debug: boolean }
+): string {
+  if (typeof message === 'string') {
+    return message;
+  }
+  if (Array.isArray(message)) {
+    return message.map((m) => stringifyMessage(m, { debug })).join('\n');
+  }
+  if ('type' in message && message.type === 'tool_result') {
+    if (debug) {
+      return `Tool result: ${message.content}`;
+    }
+    return '';
+  }
+  if ('type' in message && message.type === 'tool_use') {
+    if (debug) {
+      return `Tool use: ${message.name}`;
+    }
+    return '';
+  }
+  return JSON.stringify(message, null, 2);
+}
 
+function removeEnvValues(env: Record<string, string>): Record<string, string> {
+  const output: Record<string, string> = {};
+  for (const [key, _] of Object.entries(env)) {
+    output[key] = key; // redact env vars
+  }
+  return output;
+}

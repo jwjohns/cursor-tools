@@ -10,7 +10,7 @@ import { Tool, ToolUseBlockParam } from '@anthropic-ai/sdk/resources/index.mjs';
 import { Stream } from '@anthropic-ai/sdk/streaming.mjs';
 import { MCPAuthError, MCPError, handleMCPError } from './errors.js';
 
-interface InternalMessage {
+export interface InternalMessage {
   role: 'user' | 'assistant';
   content: string | Array<ToolResult | ToolUseBlockParam>;
 }
@@ -36,7 +36,6 @@ Use the results provided by the tools to answer the user's query.
 If you have already called a tool with the same arguments and received a result, reuse the result instead of calling the tool again.
 When you receive a tool result, focus on interpreting and explaining the result to the user rather than making additional tool calls.`;
 
-
 export class MCPClient {
   private anthropicClient: Anthropic;
   private messages: InternalMessage[] = [];
@@ -46,10 +45,11 @@ export class MCPClient {
   private toolCalls: ToolCall[] = [];
   public config: MCPClientOptions;
 
-  constructor(serverConfig: MCPClientOptions) {
+  constructor(
+    serverConfig: MCPClientOptions,
+    private debug: boolean
+  ) {
     this.config = serverConfig;
-    // if we are in a linux or mac environment run which on serverconfig. command
-    console.log('serverConfig', serverConfig);
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       throw new MCPAuthError('ANTHROPIC_API_KEY environment variable is not set');
@@ -112,13 +112,13 @@ export class MCPClient {
   }
 
   private formatToolCallArgs(args: any): string {
-    return `(args: ${JSON.stringify(args)})`;
+    return `(args: ${JSON.stringify(args, null, 2)})`;
   }
 
   private generateToolUseId(): string {
     // Generate a unique tool use ID in the format toolu_01A09q90qw90lq917835lq9
-    const randomStr = Math.random().toString(36).substring(2, 15) + 
-                     Math.random().toString(36).substring(2, 15);
+    const randomStr =
+      Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
     return `toolu_${randomStr}`;
   }
 
@@ -143,7 +143,7 @@ export class MCPClient {
             if (currentMessage) {
               this.messages.push({
                 role: 'assistant',
-                content: currentMessage
+                content: currentMessage,
               });
               currentMessage = '';
             }
@@ -156,7 +156,6 @@ export class MCPClient {
             break;
           case 'content_block_delta':
             if (chunk.delta.type === 'text_delta') {
-              process.stdout.write(chunk.delta.text);
               currentMessage += chunk.delta.text;
             } else if (chunk.delta.type === 'input_json_delta') {
               if (currentToolName && chunk.delta.partial_json) {
@@ -170,25 +169,29 @@ export class MCPClient {
               if (currentMessage) {
                 this.messages.push({
                   role: 'assistant',
-                  content: currentMessage
+                  content: currentMessage,
                 });
                 currentMessage = '';
               }
 
               const toolArgs = currentToolInputString ? JSON.parse(currentToolInputString) : {};
-              console.log(
-                `Tool call requested: ${currentToolName}${this.formatToolCallArgs(toolArgs)}`
-              );
+              if (this.debug) {
+                console.log(
+                  `Tool call requested: ${currentToolName}${this.formatToolCallArgs(toolArgs)}`
+                );
+              }
 
               // Store the tool use request in message history
               this.messages.push({
                 role: 'assistant',
-                content: [{
-                  type: 'tool_use',
-                  id: currentToolUseId!,
-                  name: currentToolName,
-                  input: toolArgs
-                }]
+                content: [
+                  {
+                    type: 'tool_use',
+                    id: currentToolUseId!,
+                    name: currentToolName,
+                    input: toolArgs,
+                  },
+                ],
               });
 
               // Check if this exact tool call has already been made
@@ -198,31 +201,39 @@ export class MCPClient {
               );
 
               if (existingCall) {
-                // If we've already made this exact call, use the cached result
-                console.log(
-                  `Cache hit for tool call: ${currentToolName}${this.formatToolCallArgs(toolArgs)}`
-                );
-                console.log(
-                  this.formatToolCall(currentToolName, toolArgs) + '\n(Using cached result)\n'
-                );
+                if (this.debug) {
+                  // If we've already made this exact call, use the cached result
+                  console.log(
+                    `Cache hit for tool call: ${currentToolName}${this.formatToolCallArgs(toolArgs)}`
+                  );
+                  console.log(
+                    `${this.formatToolCall(currentToolName, toolArgs)}\n(Using cached result)\n`
+                  );
+                }
                 this.messages.push({
                   role: 'user',
-                  content: [{
-                    type: 'tool_result',
-                    tool_use_id: currentToolUseId!,
-                    content: existingCall.result
-                  }]
+                  content: [
+                    {
+                      type: 'tool_result',
+                      tool_use_id: currentToolUseId!,
+                      content: existingCall.result,
+                    },
+                  ],
                 });
               } else {
                 // Otherwise, make the call and cache the result
-                console.log(
-                  `Cache miss for tool call: ${currentToolName}${this.formatToolCallArgs(toolArgs)}`
-                );
-                console.log(this.formatToolCall(currentToolName, toolArgs));
-                try {
+                if (this.debug) {
                   console.log(
-                    `Making MCP request: tools/call, name: ${currentToolName}, args: ${JSON.stringify(toolArgs)}`
+                    `Cache miss for tool call: ${currentToolName}${this.formatToolCallArgs(toolArgs)}`
                   );
+                  console.log(this.formatToolCall(currentToolName, toolArgs));
+                }
+                try {
+                  if (this.debug) {
+                    console.log(
+                      `Making MCP request: tools/call, name: ${currentToolName}, args: ${JSON.stringify(toolArgs, null, 2)}`
+                    );
+                  }
                   const toolResult = await this.mcpClient.request(
                     {
                       method: 'tools/call',
@@ -237,23 +248,25 @@ export class MCPClient {
                     `MCP request finished for: ${currentToolName}${this.formatToolCallArgs(toolArgs)}`
                   );
                   const formattedResult = JSON.stringify(toolResult.content.flatMap((c) => c.text));
-                  
+
                   // Cache the tool call and result with tool_use_id
                   this.toolCalls.push({
                     name: currentToolName,
                     args: toolArgs,
                     result: formattedResult,
-                    tool_use_id: currentToolUseId!
+                    tool_use_id: currentToolUseId!,
                   });
 
                   // Push the tool result in the correct format
                   this.messages.push({
                     role: 'user',
-                    content: [{
-                      type: 'tool_result',
-                      tool_use_id: currentToolUseId!,
-                      content: formattedResult
-                    }]
+                    content: [
+                      {
+                        type: 'tool_result',
+                        tool_use_id: currentToolUseId!,
+                        content: formattedResult,
+                      },
+                    ],
                   });
                 } catch (error) {
                   const mcpError = handleMCPError(error);
@@ -303,7 +316,6 @@ export class MCPClient {
       let continueConversation = true;
 
       while (continueConversation) {
-        
         const stream = await this.anthropicClient.messages.create({
           messages: this.messages,
           model: 'claude-3-5-sonnet-latest',
@@ -314,7 +326,7 @@ export class MCPClient {
         });
 
         const stopReason = await this.processStream(stream);
-        
+
         // Continue only if we used a tool and need another turn
         continueConversation = stopReason === 'tool_use';
       }

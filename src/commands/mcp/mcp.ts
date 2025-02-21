@@ -22,7 +22,7 @@ export class MCPCommand implements Command {
     run: new RunCommand(this.marketplaceManager),
   };
 
-  async *execute(query: string, options?: CommandOptions): CommandGenerator {
+  async *execute(query: string, options: CommandOptions): CommandGenerator {
     try {
       // Split into subcommand and remaining query
       const [subcommand = 'run', ...rest] = query.split(' ');
