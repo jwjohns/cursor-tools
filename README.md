@@ -20,16 +20,17 @@ This allows you to:
 git worktree add <path-to-new-worktree> <existing-branch-name>
 
 # Example:
-git worktree add ../feature-x develop  # Creates a worktree at ../feature-x based on the 'develop' branch
+cd /path/to/your/repo
+git worktree add feature-x develop  # Creates a worktree at ../feature-x based on the 'develop' branch
 
 # Create a new worktree with a new branch (this creates the branch too)
 git worktree add -b <new-branch-name> <path-to-new-worktree> [<start-point>]
 
 # Example:
-git worktree add -b my-new-feature ../my-feature-worktree  # Creates a new branch 'my-new-feature' and a worktree at ../my-feature-worktree
+git worktree add -b my-new-feature my-feature-worktree  # Creates a new branch 'my-new-feature' and a worktree at ../my-feature-worktree
 
 # You can optionally specify a start-point (like a branch or commit hash)
-git worktree add -b hotfix-login ../hotfix main
+git worktree add -b hotfix-login hotfix main
 ```
 
 ### Managing Worktrees
@@ -46,16 +47,16 @@ git worktree list
 git worktree remove <path-to-worktree>
 
 # Example:
-git worktree remove ../feature-x
+git worktree remove feature-x
 
 # Force removal if there are uncommitted changes
-git worktree remove -f ../feature-x
+git worktree remove -f feature-x
 
 # Move a worktree to a new location
 git worktree move <path-to-worktree> <new-path-to-worktree>
 
 # Example:
-git worktree move ../feature-x ../../new-location/feature-x
+git worktree move feature-x feature-x-part-2
 
 # Clean up stale worktree entries
 git worktree prune
@@ -114,8 +115,9 @@ git worktree prune
 2. **An urgent bug needs fixing:**
    ```bash
    # Create a worktree for the hotfix, based on the 'main' branch
-   git worktree add ../hotfix-login-bug main
-   cd ../hotfix-login-bug
+   cd /path/to/your/repo
+   git worktree add hotfix-login-bug main
+   cd hotfix-login-bug
 
    # Create a branch for the fix (best practice)
    git checkout -b hotfix-login-bug
@@ -140,7 +142,7 @@ git worktree prune
 
 4. **Clean up the hotfix worktree:**
    ```bash
-   git worktree remove ../hotfix-login-bug
+   git worktree remove hotfix-login-bug
    ```
 
 ## Further Reading
