@@ -1,10 +1,12 @@
 import type { Config } from '../types';
 import { loadConfig, loadEnv } from '../config';
 import OpenAI from 'openai';
-import { ApiKeyMissingError, ModelNotFoundError, NetworkError, ProviderError } from '../errors';
+import { ApiKeyMissingError, ModelNotFoundError, NetworkError, ProviderError, GeminiRecitationError } from '../errors';
 import { exhaustiveMatchGuard } from '../utils/exhaustiveMatchGuard';
 import { chunkMessage } from '../utils/messageChunker';
+import Anthropic from '@anthropic-ai/sdk';
 
+const TEN_MINUTES = 600000;
 // Interfaces for Gemini response types
 interface GeminiGroundingChunk {
   web?: {
@@ -117,6 +119,8 @@ async function retryWithBackoff<T>(
 
 // Gemini provider implementation
 export class GeminiProvider extends BaseProvider {
+  private readonly maxRecitationRetries = 2;
+
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
     if (tokenCount > 800_000 && tokenCount < 2_000_000) {
       // 1M is the limit but token counts are very approximate so play it save
@@ -492,7 +496,8 @@ export class OpenRouterProvider extends OpenAIBase {
           max_tokens: maxTokens,
         },
         {
-          timeout: options?.timeout,
+          timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
+          maxRetries: 3,
         }
       );
 
@@ -624,9 +629,62 @@ export class ModelBoxProvider extends OpenAIBase {
   }
 }
 
+// Anthropic provider implementation
+export class AnthropicProvider extends BaseProvider {
+  private client: Anthropic;
+
+  constructor() {
+    super();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new ApiKeyMissingError('Anthropic');
+    }
+    this.client = new Anthropic({
+      apiKey,
+    });
+  }
+
+  supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
+    return {
+      supported: false,
+      error: 'Anthropic does not support web search capabilities',
+    };
+  }
+
+  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
+    const model = this.getModel(options);
+    const maxTokens = options.maxTokens;
+    const systemPrompt = this.getSystemPrompt(options);
+
+    try {
+      const response = await this.client.messages.create({
+        model,
+        max_tokens: maxTokens,
+        system: systemPrompt,
+        messages: [
+          { role: 'user', content: prompt }
+        ],
+      });
+
+      const content = response.content[0];
+      if (!content || content.type !== 'text') {
+        throw new ProviderError('Anthropic returned an invalid response');
+      }
+
+      return content.text;
+    } catch (error) {
+      console.error('Anthropic Provider: Error during API call:', error);
+      if (error instanceof ProviderError) {
+        throw error;
+      }
+      throw new NetworkError('Failed to communicate with Anthropic API', error);
+    }
+  }
+}
+
 // Factory function to create providers
 export function createProvider(
-  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox'
+  provider: 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic'
 ): BaseModelProvider {
   switch (provider) {
     case 'gemini':
@@ -639,6 +697,8 @@ export function createProvider(
       return new PerplexityProvider();
     case 'modelbox':
       return new ModelBoxProvider();
+    case 'anthropic':
+      return new AnthropicProvider();
     default:
       throw exhaustiveMatchGuard(provider);
   }

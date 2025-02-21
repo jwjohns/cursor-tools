@@ -44,11 +44,34 @@ export class ApiKeyMissingError extends ProviderError {
 }
 
 export class ModelNotFoundError extends ProviderError {
-  constructor(provider: string, model?: string) {
-    super(`No model specified for ${provider}${model ? ` (requested model: ${model})` : ''}.`, {
-      provider,
-      model,
-    });
+  constructor(provider: string) {
+    let message = `No model specified for ${provider}.`;
+    
+    // Add model suggestions based on provider
+    switch (provider) {
+      case 'openai':
+        message += '\nSuggested models:\n- gpt-4-turbo-preview\n- gpt-3.5-turbo';
+        break;
+      case 'anthropic':
+        message += '\nSuggested models:\n- claude-3-opus-20240229\n- claude-3-sonnet-20240229';
+        break;
+      case 'gemini':
+        message += '\nSuggested models:\n- gemini-2.0-pro-exp\n- gemini-2.0-pro';
+        break;
+      case 'perplexity':
+        message += '\nSuggested models:\n- sonar-pro\n- sonar-small-online';
+        break;
+      case 'openrouter':
+        message += '\nSuggested models:\n- anthropic/claude-3-sonnet\n- google/gemini-pro\n- openai/gpt-4-turbo';
+        break;
+      case 'modelbox':
+        message += '\nSuggested models:\n- perplexity/sonar-pro\n- anthropic/claude-3-sonnet';
+        break;
+    }
+    
+    message += '\nUse --model to specify a model.';
+    
+    super(message, { provider, model: undefined });
     this.name = 'ModelNotFoundError';
   }
 }
@@ -57,6 +80,16 @@ export class NetworkError extends ProviderError {
   constructor(message: string, details?: unknown) {
     super(`Network error: ${message}`, details);
     this.name = 'NetworkError';
+  }
+}
+
+export class GeminiRecitationError extends ProviderError {
+  constructor(message?: string) {
+    super(
+      message || 'Gemini was unable to provide an original response and may be reciting the prompt. Please rephrase your query.',
+      { finishReason: 'RECITATION' }
+    );
+    this.name = 'GeminiRecitationError';
   }
 }
 
