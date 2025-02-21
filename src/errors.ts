@@ -62,7 +62,7 @@ export class ModelNotFoundError extends ProviderError {
         message += '\nSuggested models:\n- sonar-pro\n- sonar-reasoning-pro';
         break;
       case 'openrouter':
-        message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3.5-sonnet\n- deepseek/deepseek-chat\n- deepseek/deepseek-r1:free\n- google/gemini-2.0-pro-exp-02-05:free';
+        message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3.5-sonnet\n- deepseek/deepseek-chat\n- deepseek/deepseek-r1:free\n- google/gemini-2.0-pro-exp-02-05:free\n- mistral/mistral-large\n- groq/llama2-70b';
         break;
       case 'modelbox':
         message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3-5-sonnet';

@@ -66,6 +66,12 @@ Create this file in your project root to customize behavior. Here's a comprehens
   },
   "tokenCount": {
     "encoding": "o200k_base"      // Token counting method
+  },
+  "openai": {
+    "maxTokens": 8000  // Will be used when provider is "openai"
+  },
+  "anthropic": {
+    "maxTokens": 8000  // Will be used when provider is "anthropic"
   }
 }
 ```

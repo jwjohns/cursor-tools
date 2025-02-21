@@ -36,7 +36,7 @@ globs: *,**/*
 Use the following commands to get AI assistance:
 
 **Direct Model Queries:**
-\`cursor-tools ask "<your question>" --provider <provider> --model <model>\` - Ask any model from any provider a direct question (e.g., \`cursor-tools ask "What is the capital of France?" --provider openai --model o3-mini\`)
+\`cursor-tools ask "<your question>" --provider <provider> --model <model>\` - Ask any model from any provider a direct question (e.g., \`cursor-tools ask "What is the capital of France?" --provider openai --model o3-mini\`). Note that this command is generally less useful than other commands like \`repo\` or \`plan\` because it does not include any context from your codebase or repository.
 
 **Implementation Planning:**
 \`cursor-tools plan "<query>"\` - Generate a focused implementation plan using AI (e.g., \`cursor-tools plan "Add user authentication to the login page"\`)

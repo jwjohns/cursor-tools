@@ -215,7 +215,7 @@ Note: in most cases you can say "Use Stagehand" instead of "use cursor-tools" an
 
 "Ask OpenAI's o3-mini model to explain the concept of dependency injection."
 
-Note: The ask command requires both --provider and --model parameters to be specified.
+Note: The ask command requires both --provider and --model parameters to be specified. This command is generally less useful than other commands like `repo` or `plan` because it does not include any context from your codebase or repository.
 
 
 ## Authentication and API Keys
