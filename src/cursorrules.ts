@@ -35,12 +35,15 @@ globs: *,**/*
 # Instructions
 Use the following commands to get AI assistance:
 
+**Direct Model Queries:**
+\`cursor-tools ask "<your question>" --provider <provider> --model <model>\` - Ask any model from any provider a direct question (e.g., \`cursor-tools ask "What is the capital of France?" --provider openai --model o3-mini\`)
+
 **Implementation Planning:**
 \`cursor-tools plan "<query>"\` - Generate a focused implementation plan using AI (e.g., \`cursor-tools plan "Add user authentication to the login page"\`)
 The plan command uses multiple AI models to:
-1. Identify relevant files in your codebase
+1. Identify relevant files in your codebase (using Gemini by default)
 2. Extract content from those files
-3. Generate a detailed implementation plan
+3. Generate a detailed implementation plan (using OpenAI o3-mini by default)
 
 **Plan Command Options:**
 --fileProvider=<provider>: Provider for file identification (gemini, openai, anthropic, perplexity, or openrouter)

@@ -1,6 +1,6 @@
 export type CommandGenerator = AsyncGenerator<string, void, unknown>;
 
-export type Provider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
+export type Provider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox' | 'anthropic';
 
 // Base options shared by all commands
 export interface CommandOptions {

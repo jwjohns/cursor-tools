@@ -32,6 +32,10 @@ All notable changes to this project will be documented in this file.
   - More reliable output flushing
 
 ### Added
+- New `ask` command for direct model queries
+  - Requires both provider and model parameters
+  - Allows querying any model from any provider directly
+  - Simple and focused command for direct questions
 - Support for new Cursor IDE project rules structure
   - New installations now use `.cursor/rules/cursor-tools.mdc` by default
   - Maintain compatibility with legacy `.cursorrules` file via `USE_LEGACY_CURSORRULES=true`

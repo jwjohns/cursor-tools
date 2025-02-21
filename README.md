@@ -163,6 +163,7 @@ Use Cursor Composer in agent mode with command execution (not sure what this mea
 
 
 ### Tool Recommendations
+- `cursor-tools ask` allows direct querying of any model from any provider. It's best for simple questions where you want to use a specific model or compare responses from different models.
 - `cursor-tools web` uses an AI teammate with web search capability to answer questions. `web` is best for finding up-to-date information from the web that is not specific to the repository such as how to use a library to search for known issues and error messages or to get suggestions on how to do something. Web is a teammate who knows tons of stuff and is always up to date.
 - `cursor-tools repo` uses an AI teammate with large context window capability to answer questions. `repo` sends the entire repo as context so it is ideal for questions about how things work or where to find something, it is also great for code review, debugging and planning.  is a teammate who knows the entire codebase inside out and understands how everything works together.
 - `cursor-tools plan` uses an AI teammate with reasoning capability to plan complex tasks. Plan uses a two step process. First it does a whole repo search with a large context window model to find relevant files. Then it sends only those files as context to a thinking model to generate a plan it is great for planning complex tasks and for debugging and refactoring. Plan is a teammate who is really smart on a well defined problem, although doesn't consider the bigger picture.
@@ -208,6 +209,13 @@ Note: in most cases you can say "fetch issue 123" or "fetch PR 321" instead of "
 "Use cursor-tools to open https://example.com/foo the and check the error in the network logs, what could be causing it?"
 
 Note: in most cases you can say "Use Stagehand" instead of "use cursor-tools" and it will work the same.
+
+### Use direct model queries
+"Use cursor-tools ask to compare how different models answer this question: 'What are the key differences between REST and GraphQL?'"
+
+"Ask OpenAI's o3-mini model to explain the concept of dependency injection."
+
+Note: The ask command requires both --provider and --model parameters to be specified.
 
 
 ## Authentication and API Keys

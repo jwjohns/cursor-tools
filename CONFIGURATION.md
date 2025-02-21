@@ -237,3 +237,40 @@ For new installations, we use the recommended `.cursor/rules/cursor-tools.mdc` p
 To get the benefits of cursor-tools you should use Cursor agent in "yolo mode". Ideal settings:
 
 ![image](https://github.com/user-attachments/assets/783e26cf-c339-4cae-9629-857da0359cef) 
+
+## Command-Specific Configuration
+
+### Ask Command
+The `ask` command requires both a provider and a model to be specified. While these must be provided via command-line arguments, the maxTokens can be configured through the provider-specific settings:
+
+```json
+{
+  "openai": {
+    "maxTokens": 8000  // Will be used when provider is "openai"
+  },
+  "anthropic": {
+    "maxTokens": 8000  // Will be used when provider is "anthropic"
+  }
+}
+```
+
+### Plan Command
+The plan command uses two different models:
+1. A file identification model (default: Gemini with gemini-2.0-pro-exp)
+2. A thinking model for plan generation (default: OpenAI with o3-mini)
+
+You can configure both models and their providers:
+```json
+{
+  "plan": {
+    "fileProvider": "gemini",
+    "thinkingProvider": "openai",
+    "fileModel": "gemini-2.0-pro-exp",
+    "thinkingModel": "o3-mini",
+    "fileMaxTokens": 8192,
+    "thinkingMaxTokens": 8192
+  }
+}
+```
+
+The OpenAI o3-mini model is chosen as the default thinking provider for its speed and efficiency in generating implementation plans. 
