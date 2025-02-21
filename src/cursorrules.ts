@@ -46,8 +46,8 @@ The plan command uses multiple AI models to:
 3. Generate a detailed implementation plan (using OpenAI o3-mini by default)
 
 **Plan Command Options:**
---fileProvider=<provider>: Provider for file identification (gemini, openai, anthropic, perplexity, or openrouter)
---thinkingProvider=<provider>: Provider for plan generation (gemini, openai, anthropic, perplexity, or openrouter)
+--fileProvider=<provider>: Provider for file identification (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
+--thinkingProvider=<provider>: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
 --fileModel=<model>: Model to use for file identification
 --thinkingModel=<model>: Model to use for plan generation
 --debug: Show detailed error information
@@ -57,8 +57,8 @@ The plan command uses multiple AI models to:
 when using web for complex queries suggest writing the output to a file somewhere like local-research/<query summary>.md.
 
 **Web Command Options:**
---provider=<provider>: AI provider to use (perplexity or openrouter)
---model=<model>: Model to use for web search (e.g., perplexity/sonar-medium-chat for OpenRouter)
+--provider=<provider>: AI provider to use (perplexity, gemini, modelbox, or openrouter)
+--model=<model>: Model to use for web search (model name depends on provider)
 --max-tokens=<number>: Maximum tokens for response
 
 **Repository Context:**

@@ -251,11 +251,11 @@ cursor-tools plan "Add user authentication to the login page"
 The plan command uses multiple AI models to:
 1. Identify relevant files in your codebase (using Gemini by default)
 2. Extract content from those files
-3. Generate a detailed implementation plan (using OpenRouter by default)
+3. Generate a detailed implementation plan (using o3-mini by default)
 
 **Plan Command Options:**
-- `--fileProvider=<provider>`: Provider for file identification (gemini, openai, or openrouter)
-- `--thinkingProvider=<provider>`: Provider for plan generation (gemini, openai, or openrouter)
+- `--fileProvider=<provider>`: Provider for file identification (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
+- `--thinkingProvider=<provider>`: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
 - `--fileModel=<model>`: Model to use for file identification
 - `--thinkingModel=<model>`: Model to use for plan generation
 - `--fileMaxTokens=<number>`: Maximum tokens for file identification
@@ -665,8 +665,8 @@ Documentation command specific options:
 - `--hint`: Provide additional context or focus for documentation generation
 
 Plan command specific options:
-- `--fileProvider`: Provider for file identification (gemini, openai, or openrouter)
-- `--thinkingProvider`: Provider for plan generation (gemini, openai, or openrouter)
+- `--fileProvider`: Provider for file identification (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
+- `--thinkingProvider`: Provider for plan generation (gemini, openai, anthropic, perplexity, modelbox, or openrouter)
 - `--fileModel`: Model to use for file identification
 - `--thinkingModel`: Model to use for plan generation
 - `--fileMaxTokens`: Maximum tokens for file identification
