@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Added Anthropic provider for access to Claude models through the official Anthropic API
+- Introduced the new MCP command collection:
+  - Added `mcp search` command to discover servers from the MCP Marketplace based on capabilities and requirements
+  - Added `mcp run` command to execute tools from MCP servers using natural language queries
+  - Automatic server selection and configuration based on query context
+  - Real-time streaming of command results
+  - Requires `ANTHROPIC_API_KEY` for operation
+  - Integrated with the MCP Marketplace API for server discovery
+  - Intelligent error handling with detailed error messages for authentication, connection, and execution issues
+
 ## [0.6.0-alpha.3] - 2024-03-22
 
 ### Added

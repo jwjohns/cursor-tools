@@ -1,4 +1,4 @@
-import type { Command, CommandGenerator, CommandOptions, Config } from '../types';
+import type { Command, CommandGenerator, CommandOptions, Config, Provider } from '../types';
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config';
 import { pack } from 'repomix';
 import { readFileSync } from 'node:fs';
@@ -7,31 +7,30 @@ import { createProvider } from '../providers/base';
 import { FileError, ProviderError } from '../errors';
 import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repomixConfig';
 
-type FileProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
-type ThinkingProvider = 'gemini' | 'openai' | 'openrouter' | 'perplexity' | 'modelbox';
-
 // Plan-specific options interface
 interface PlanCommandOptions extends CommandOptions {
-  fileProvider?: FileProvider;
-  thinkingProvider?: ThinkingProvider;
+  fileProvider?: Provider;
+  thinkingProvider?: Provider;
   fileModel?: string;
   thinkingModel?: string;
 }
 
-const DEFAULT_FILE_MODELS: Record<FileProvider, string> = {
-  gemini: 'gemini-2.0-pro-exp', // largest context window (2M tokens)
+const DEFAULT_FILE_MODELS: Record<Provider, string> = {
+  gemini: 'gemini-2.0-pro-exp-02-05:free', // largest context window (2M tokens)
   openai: 'o3-mini', // largest context window (200k)
   perplexity: 'sonar-pro', // largest context window (200k tokens)
   openrouter: 'google/gemini-2.0-pro-exp-02-05:free', // largest context window (2M tokens)
   modelbox: 'anthropic/claude-3-5-sonnet', // just for variety
+  anthropic: 'claude-3-5-sonnet-latest',
 };
 
-const DEFAULT_THINKING_MODELS: Record<ThinkingProvider, string> = {
+const DEFAULT_THINKING_MODELS: Record<Provider, string> = {
   gemini: 'gemini-2.0-flash-thinking-exp',
   openai: 'o3-mini',
   perplexity: 'r1-1776',
   openrouter: 'openai/o3-mini',
   modelbox: 'anthropic/claude-3-5-sonnet',
+  anthropic: 'claude-3-5-sonnet-latest',
 };
 
 export class PlanCommand implements Command {
@@ -51,10 +50,16 @@ export class PlanCommand implements Command {
         );
       }
 
+      if (options?.provider && options?.thinkingProvider) {
+        throw new Error(
+          'Cannot specify both --provider and --thinkingProvider options. Use --provider to set the file provider.'
+        );
+      }
+
       const fileProviderName = options?.fileProvider || this.config.plan?.fileProvider || 'gemini';
       const fileProvider = createProvider(fileProviderName);
       const thinkingProviderName =
-        options?.thinkingProvider || this.config.plan?.thinkingProvider || 'openai';
+        options?.thinkingProvider || options.provider || this.config.plan?.thinkingProvider || 'openai';
       const thinkingProvider = createProvider(thinkingProviderName);
 
       const fileModel =

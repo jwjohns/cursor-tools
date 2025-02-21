@@ -1,15 +1,17 @@
-import type { Command, CommandGenerator, CommandOptions } from '../types.ts';
+import type { Command, CommandGenerator, CommandOptions, Provider } from '../types.ts';
 import type { Config } from '../types.ts';
 import { defaultMaxTokens, loadConfig, loadEnv } from '../config.ts';
 import { createProvider } from '../providers/base';
 import { ProviderError } from '../errors';
 
 // Default models that support web search for each provider
-const DEFAULT_WEB_MODELS = {
+const DEFAULT_WEB_MODELS: Record<Provider, string | undefined> = {
   perplexity: 'sonar-pro',
   openrouter: 'perplexity/sonar',
   modelbox: 'perplexity/sonar',
   gemini: 'gemini-2.0-pro-exp',
+  openai: undefined, // OpenAI does not support web search via API
+  anthropic: undefined, // Anthropic does not support web search via API
 } as const;
 
 export class WebCommand implements Command {
