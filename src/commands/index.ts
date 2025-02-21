@@ -7,6 +7,7 @@ import { PlanCommand } from './plan.ts';
 import { RepoCommand } from './repo.ts';
 import { DocCommand } from './doc.ts';
 import { AskCommand } from './ask.ts';
+import { MCPCommand } from './mcp/mcp.ts';
 
 export const commands: CommandMap = {
   web: new WebCommand(),
@@ -17,4 +18,5 @@ export const commands: CommandMap = {
   browser: new BrowserCommand(),
   plan: new PlanCommand(),
   ask: new AskCommand(),
+  mcp: new MCPCommand(),
 };

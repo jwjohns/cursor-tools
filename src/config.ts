@@ -87,6 +87,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 import dotenv from 'dotenv';
+import { once } from './utils/once';
 
 export function loadConfig(): Config {
   // Try loading from current directory first

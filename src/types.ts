@@ -10,6 +10,8 @@ export interface CommandOptions {
   provider?: Provider;
   debug: boolean;
   url?: string;
+  server?: string; // MCP server name to use
+  json?: boolean; // Output results as JSON
 
   // Output options
   saveTo?: string; // Path to save output to in addition to stdout
@@ -74,6 +76,16 @@ export interface Config {
   };
   web?: {
     provider?: Provider;
+    model?: string;
+    maxTokens?: number;
+  };
+  mcp?: {
+    provider?: Provider;
+    model?: string;
+    maxTokens?: number;
+    defaultServer?: string;
+  };
+  marketplace?: {
     model?: string;
     maxTokens?: number;
   };

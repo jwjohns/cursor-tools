@@ -56,6 +56,7 @@ type CLIBooleanOption =
   | 'debug'
   // Output options
   | 'quiet'
+  | 'json'
   // Browser options
   | 'console'
   | 'html'
@@ -75,6 +76,7 @@ interface CLIOptions {
   output?: string;
   saveTo?: string;
   quiet?: boolean;
+  json?: boolean;
 
   // Context options
   hint?: string;
@@ -117,6 +119,7 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
   output: 'output',
   saveto: 'saveTo',
   quiet: 'quiet',
+  json: 'json',
 
   // Context options
   hint: 'hint',
@@ -149,6 +152,7 @@ const OPTION_KEYS: Record<string, CLIOptionKey> = {
 const BOOLEAN_OPTIONS = new Set<CLIBooleanOption>([
   'debug',
   'quiet',
+  'json',
   'console',
   'html',
   'network',
@@ -207,6 +211,7 @@ async function main() {
     text: undefined,
     debug: undefined,
     quiet: undefined,
+    json: undefined,
   };
   const queryArgs: string[] = [];
 
