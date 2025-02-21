@@ -146,8 +146,9 @@ export class GeminiProvider extends BaseProvider {
 
   supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
     const unsupportedModels = new Set([
-      'gemini-2.0-flash-thinking-exp-01-21',
-      'gemini-2.0-flash-thinking-exp',
+      'foo'
+      // 'gemini-2.0-flash-thinking-exp-01-21',
+      // 'gemini-2.0-flash-thinking-exp',
     ]);
     if (unsupportedModels.has(model)) {
       return {
@@ -168,8 +169,10 @@ export class GeminiProvider extends BaseProvider {
       throw new ApiKeyMissingError('Gemini');
     }
 
+    let attempt = 0;
     return retryWithBackoff(
       async () => {
+        attempt++;
         // Handle token count if provided
         let finalOptions = { ...options };
         if (options?.tokenCount) {
@@ -184,6 +187,10 @@ export class GeminiProvider extends BaseProvider {
 
         const model = this.getModel(finalOptions);
         const maxTokens = finalOptions.maxTokens;
+
+        if (attempt > 1) {
+          prompt = 'Something went wrong, try again:\n' + prompt;
+        }
 
         try {
           const requestBody: any = {
