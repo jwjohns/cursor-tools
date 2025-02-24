@@ -12,14 +12,6 @@ import type { Command, CommandGenerator, CommandOptions } from '../../types';
 import { spawn } from 'node:child_process';
 import { findXcodeProject, type XcodeBuildError } from './utils.js';
 
-/**
- * Command-specific flags and options
- */
-interface BuildCommandOptions {
-  buildPath?: string;
-  destination?: string;
-}
-
 export class BuildCommand implements Command {
   /**
    * Builds the Xcode project and streams output.
@@ -28,34 +20,15 @@ export class BuildCommand implements Command {
    * @param dir - Project directory
    * @returns Promise resolving to build info and errors
    */
-
-  // Default build path relative to project directory
-  private defaultBuildPath = './.build/DerivedData';
-  
-  // Default destination for simulator
-  private defaultDestination = 'platform=iOS Simulator,name=iPhone 16 Pro';
-  
   private async getBuildOutput(
-    dir: string,
-    options: BuildCommandOptions = {}
-  ): Promise<{ output: string; errors: XcodeBuildError[]; buildPath: string }> {
+    dir: string
+  ): Promise<{ output: string; errors: XcodeBuildError[] }> {
     return new Promise((resolve, reject) => {
       const project = findXcodeProject(dir);
       if (!project) {
         reject(new Error('No Xcode project or workspace found in the current directory'));
         return;
       }
-
-      // Use provided build path or default
-      const buildPath = options.buildPath || this.defaultBuildPath;
-      
-      // Use provided destination or default
-      const destination = options.destination || this.defaultDestination;
-      
-      // Create absolute path for the build directory
-      const absoluteBuildPath = buildPath.startsWith('/')
-        ? buildPath
-        : `${dir}/${buildPath}`;
 
       // Build the project/workspace
       const args = [
@@ -65,13 +38,6 @@ export class BuildCommand implements Command {
         'iphonesimulator',
         '-scheme',
         project.name,
-        '-derivedDataPath',
-        buildPath,
-        '-destination',
-        destination,
-        '-UseNewBuildSystem=YES',
-        '-parallel-testing-enabled=YES',
-        '-parallelizeTargets=YES',
         'CODE_SIGN_IDENTITY=-',
         'CODE_SIGNING_REQUIRED=NO',
         'CODE_SIGNING_ALLOWED=NO',
@@ -103,7 +69,6 @@ export class BuildCommand implements Command {
           resolve({
             output,
             errors: this.parseBuildOutput(output),
-            buildPath: absoluteBuildPath,
           });
         } else {
           reject(
@@ -176,24 +141,10 @@ export class BuildCommand implements Command {
         throw new Error('No Xcode project or workspace found in current directory');
       }
 
-      // Extract build path and destination options from the query string
-      // Format: [buildPath=path] [destination=platform,name=Device]
-      const buildPathMatch = query.match(/buildPath=([^\s]+)/);
-      const destinationMatch = query.match(/destination=([^\s]+)/);
-      
-      const buildOptions: BuildCommandOptions = {
-        buildPath: buildPathMatch ? buildPathMatch[1] : this.defaultBuildPath,
-        destination: destinationMatch ? destinationMatch[1] : this.defaultDestination,
-      };
-
       yield 'Building Xcode project...\n';
 
-      // Pass build options to getBuildOutput
-      const { errors, buildPath } = await this.getBuildOutput(dir, buildOptions);
+      const { errors } = await this.getBuildOutput(dir);
 
-      // Store build path in global state for the run command to use
-      process.env.XCODE_BUILD_PATH = buildPath;
-      
       // Group errors by type
       const buildErrors = errors.filter((e) => e.type === 'error');
       const warnings = errors.filter((e) => e.type === 'warning');
