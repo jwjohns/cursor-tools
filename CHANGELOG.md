@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- Added support for MCP server overrides in the marketplace
+  - Implemented hardcoded overrides in `MCP_OVERRIDES` map
+  - Added override for google-calendar-mcp to use eastlondoner fork
+  - Overrides can specify custom `githubUrl`, `command`, and `args`
+  - Preserves environment variables when using overrides
+  - Type-safe implementation ensures overrides match the MCPServer interface
+  - Overrides take precedence over marketplace data and automatic GitHub repository checks
+  - Logs when an override is applied using console.log for transparency
+
 ## [0.6.0-alpha.5] - 2024-03-22
 
 ### Changed

@@ -783,17 +783,15 @@ export class ModelBoxProvider extends OpenAIBase {
   supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
     try {
       const availableModels = this.availableModels;
-      
+
       if (availableModels) {
         // First check if the model exists
         if (!availableModels.has(model)) {
           const similarModels = getProviderSimilarModels(model, availableModels);
-          const webSearchModels = similarModels.filter(m => 
-            m.includes('sonar') || 
-            m.includes('online') || 
-            m.includes('gemini')
+          const webSearchModels = similarModels.filter(
+            (m) => m.includes('sonar') || m.includes('online') || m.includes('gemini')
           );
-          
+
           if (webSearchModels.length > 0) {
             return {
               supported: false,
@@ -801,13 +799,15 @@ export class ModelBoxProvider extends OpenAIBase {
               error: `Model '${model}' not found. Consider using ${webSearchModels[0]} for web search instead.`,
             };
           }
-          
+
           return {
             supported: false,
-            error: `Model '${model}' not found.\n\nAvailable web search models:\n${Array.from(availableModels)
-              .filter(m => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
+            error: `Model '${model}' not found.\n\nAvailable web search models:\n${Array.from(
+              availableModels
+            )
+              .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
               .slice(0, 5)
-              .map(m => `- ${m}`)
+              .map((m) => `- ${m}`)
               .join('\n')}`,
           };
         }
@@ -856,9 +856,9 @@ export class ModelBoxProvider extends OpenAIBase {
         const similarModels = getProviderSimilarModels(model, availableModels);
         throw new ModelNotFoundError(
           `Model '${model}' not found in ModelBox.\n\n` +
-          `You requested: ${model}\n` +
-          `Similar available models:\n${similarModels.map(m => `- ${m}`).join('\n')}\n\n` +
-          `Use --model with one of the above models.`
+            `You requested: ${model}\n` +
+            `Similar available models:\n${similarModels.map((m) => `- ${m}`).join('\n')}\n\n` +
+            `Use --model with one of the above models.`
         );
       }
 
@@ -914,7 +914,7 @@ function isWebSearchSupportedModelOnModelBox(model: string): boolean {
  * Find similar models from a list of available models within the same provider namespace
  * 1. Filters models to only those from the same provider (e.g., 'openai/', 'anthropic/')
  * 2. Uses string similarity to find similar model names within that provider
- * 
+ *
  * @deprecated Consider using the generic implementation in src/utils/stringSimilarity.ts
  * This version is kept for backward compatibility and its provider-specific filtering
  */
@@ -923,20 +923,22 @@ function getProviderSimilarModels(model: string, availableModels: Set<string>): 
   const [provider, modelName] = modelParts.length > 1 ? modelParts : [null, modelParts[0]];
 
   // Find models from the same provider or all models if no provider specified
-  const similarModels = Array.from(availableModels).filter(m => {
+  const similarModels = Array.from(availableModels).filter((m) => {
     if (!provider) return true;
     const [mProvider] = m.split('/');
     return mProvider === provider;
   });
 
   // Sort by similarity to the requested model name
-  return similarModels.sort((a, b) => {
-    const [, aName = a] = a.split('/'); // Use full string if no provider prefix
-    const [, bName = b] = b.split('/');
-    const aSimilarity = stringSimilarity(modelName, aName);
-    const bSimilarity = stringSimilarity(modelName, bName);
-    return bSimilarity - aSimilarity;
-  }).slice(0, 5); // Return top 5 most similar models
+  return similarModels
+    .sort((a, b) => {
+      const [, aName = a] = a.split('/'); // Use full string if no provider prefix
+      const [, bName = b] = b.split('/');
+      const aSimilarity = stringSimilarity(modelName, aName);
+      const bSimilarity = stringSimilarity(modelName, bName);
+      return bSimilarity - aSimilarity;
+    })
+    .slice(0, 5); // Return top 5 most similar models
 }
 
 // Anthropic provider implementation

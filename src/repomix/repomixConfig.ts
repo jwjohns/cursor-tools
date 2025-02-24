@@ -18,7 +18,7 @@ export const ignorePatterns = [
   '**/*.tsbuildinfo',
 ];
 
-export const includePatterns = ['**/*', '.cursorrules', '.cursor/rules/*','.cursor/**'];
+export const includePatterns = ['**/*', '.cursorrules', '.cursor/rules/*', '.cursor/**'];
 
 export const outputOptions = {
   compress: false,

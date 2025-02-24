@@ -53,8 +53,8 @@ const MCP_OVERRIDES: Record<string, Partial<MCPServer>> = {
   'google-calendar-mcp': {
     githubUrl: 'https://github.com/eastlondoner/google-calendar-mcp',
     command: 'npx',
-    args: ['-y', 'github:eastlondoner/google-calendar-mcp@main']
-  }
+    args: ['-y', 'github:eastlondoner/google-calendar-mcp@main'],
+  },
 };
 
 export class MarketplaceManager {
@@ -62,17 +62,17 @@ export class MarketplaceManager {
 
   async getMarketplaceData(): Promise<MarketplaceData> {
     const data = await fetchFromMCPDirectory();
-    
+
     // Apply overrides
-    const servers = data.servers.map(server => {
+    const servers = data.servers.map((server) => {
       const override = MCP_OVERRIDES[server.mcpId];
       if (override) {
         return {
           ...server,
-          ...override
+          ...override,
         };
       }
-      
+
       return server;
     });
 
