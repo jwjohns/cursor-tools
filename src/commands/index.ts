@@ -8,6 +8,7 @@ import { RepoCommand } from './repo.ts';
 import { DocCommand } from './doc.ts';
 import { AskCommand } from './ask.ts';
 import { MCPCommand } from './mcp/mcp.ts';
+import { XcodeCommand } from './xcode/xcode.ts';
 
 export const commands: CommandMap = {
   web: new WebCommand(),
@@ -19,4 +20,5 @@ export const commands: CommandMap = {
   plan: new PlanCommand(),
   ask: new AskCommand(),
   mcp: new MCPCommand(),
+  xcode: new XcodeCommand(),
 };
