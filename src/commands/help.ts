@@ -23,6 +23,10 @@ Examples:
 Available Commands:
 ${this.getCommandList()}
 
+For detailed help on a specific command, run:
+  cursor-tools help <command>
+  cursor-tools instructions     Get complete documentation and examples
+
 Notes:
 - Use --help flag with any command for quick help
 - Each command may have its own specific options
@@ -58,6 +62,10 @@ Notes:
 
   private getGeneralHelp(): string {
     return `cursor-tools - AI-powered CLI tool for development tasks
+
+Quick Start:
+  cursor-tools instructions     Get complete instructions and command reference
+  cursor-tools help <command>   Get detailed help for a specific command
 
 Usage: cursor-tools [options] <command> [args]
 
