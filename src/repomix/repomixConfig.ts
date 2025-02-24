@@ -1,12 +1,14 @@
 export const ignorePatterns = [
+  '**/.!(cursor)/**',
   '**/*.pbxproj',
   '**/node_modules/**',
   '**/dist/**',
   '**/build/**',
   '**/compile/**',
-  '**/.*/**',
   '**/*.spec.*',
   '**/*.pyc',
+  '**/.env',
+  '**/.env.*',
   '**/*.env',
   '**/*.env.*',
   '**/*.lock',
@@ -16,7 +18,7 @@ export const ignorePatterns = [
   '**/*.tsbuildinfo',
 ];
 
-export const includePatterns = ['**/*', '!.cursorrules', '!.cursor/rules/cursor-tools.mdc'];
+export const includePatterns = ['**/*', '.cursorrules', '.cursor/rules/*','.cursor/**'];
 
 export const outputOptions = {
   compress: false,

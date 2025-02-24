@@ -11,6 +11,7 @@ import {
 import { exhaustiveMatchGuard } from '../utils/exhaustiveMatchGuard';
 import { chunkMessage } from '../utils/messageChunker';
 import Anthropic from '@anthropic-ai/sdk';
+import { stringSimilarity } from '../utils/stringSimilarity';
 
 const TEN_MINUTES = 600000;
 // Interfaces for Gemini response types
@@ -56,6 +57,8 @@ export interface ProviderConfig {
   // OpenRouter-specific fields
   referer?: string;
   appName?: string;
+  // Debug logging config
+  debugLogMaxLength?: number; // Maximum length for debug log messages from this provider (in characters)
 }
 
 // Base provider interface that all specific provider interfaces will extend
@@ -86,6 +89,27 @@ export abstract class BaseProvider implements BaseModelProvider {
     );
   }
 
+  protected logRequestStart(
+    options: ModelOptions,
+    model: string,
+    maxTokens: number,
+    systemPrompt: string | undefined,
+    endpoint: string,
+    prompt: string,
+    headers?: Record<string, string>
+  ): void {
+    this.debugLog(options, `Executing prompt with model: ${model}, maxTokens: ${maxTokens}`);
+    this.debugLog(options, `API endpoint: ${endpoint}`);
+    if (headers) {
+      this.debugLog(options, 'Request headers:', this.truncateForLogging(headers));
+    }
+    if (systemPrompt) {
+      this.debugLog(options, 'System prompt:', this.truncateForLogging(systemPrompt));
+    }
+    // User prompts is logged elsewhere and it is long so skip it here
+    // this.debugLog(options, 'User prompt:', this.truncateForLogging(prompt));
+  }
+
   protected handleLargeTokenCount(tokenCount: number): { model?: string; error?: string } {
     return {}; // Default implementation - no token count handling
   }
@@ -94,6 +118,18 @@ export abstract class BaseProvider implements BaseModelProvider {
     if (options?.debug) {
       console.log(`[${this.constructor.name}] ${message}`, ...args);
     }
+  }
+
+  protected truncateForLogging(obj: any, maxLength?: number): string {
+    const defaultMaxLength = 500;
+    const configMaxLength = (this.config as Record<string, any>)[
+      this.constructor.name.toLowerCase()
+    ]?.debugLogMaxLength;
+    const effectiveMaxLength = maxLength ?? configMaxLength ?? defaultMaxLength;
+
+    const str = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+    if (str.length <= effectiveMaxLength) return str;
+    return str.slice(0, effectiveMaxLength) + '... (truncated)';
   }
 
   abstract supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string };
@@ -193,6 +229,17 @@ export class GeminiProvider extends BaseProvider {
 
         const model = this.getModel(finalOptions);
         const maxTokens = finalOptions.maxTokens;
+        const systemPrompt = this.getSystemPrompt(options);
+        const startTime = Date.now();
+
+        this.logRequestStart(
+          options,
+          model,
+          maxTokens,
+          systemPrompt,
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          prompt
+        );
 
         if (attempt > 1) {
           prompt = 'Something went wrong, try again:\n' + prompt;
@@ -205,7 +252,7 @@ export class GeminiProvider extends BaseProvider {
             system_instruction: {
               parts: [
                 {
-                  text: this.getSystemPrompt(options),
+                  text: systemPrompt,
                 },
               ],
             },
@@ -230,7 +277,7 @@ export class GeminiProvider extends BaseProvider {
             ];
           }
 
-          this.debugLog(options, 'Request body:', JSON.stringify(requestBody, null, 2));
+          this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
 
           const response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -241,8 +288,18 @@ export class GeminiProvider extends BaseProvider {
             }
           );
 
+          const endTime = Date.now();
+          this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+
           if (!response.ok) {
-            throw new NetworkError(`Gemini API error: ${await response.text()}`);
+            const errorText = await response.text();
+            if (response.status === 429) {
+              console.warn(
+                'Received 429 error from Google API. This can occur due to token limits on free accounts. ' +
+                  'For more information, see: https://github.com/eastlondoner/cursor-tools/issues/35'
+              );
+            }
+            throw new NetworkError(`Gemini API HTTP error (${response.status}): ${errorText}`);
           }
 
           const data = await response.json();
@@ -250,7 +307,7 @@ export class GeminiProvider extends BaseProvider {
             throw new ProviderError(`Gemini API error: ${JSON.stringify(data.error)}`);
           }
 
-          this.debugLog(options, 'Response:', JSON.stringify(data, null, 2));
+          this.debugLog(options, 'Response:', this.truncateForLogging(data));
 
           const content = data.candidates[0]?.content?.parts
             .map((part: any) => part.text)
@@ -339,19 +396,36 @@ export class GeminiProvider extends BaseProvider {
 
 // Base class for OpenAI-compatible providers (OpenAI and OpenRouter)
 abstract class OpenAIBase extends BaseProvider {
-  protected client: OpenAI;
+  protected defaultClient: OpenAI;
+  protected webSearchClient: OpenAI;
 
   constructor(
     apiKey: string,
     baseURL?: string,
-    options?: { defaultHeaders?: Record<string, string> }
+    options?: { defaultHeaders?: Record<string, string> },
+    webSearchOptions?: { baseURL?: string; defaultHeaders?: Record<string, string> }
   ) {
     super();
-    this.client = new OpenAI({
+    this.defaultClient = new OpenAI({
       apiKey,
       ...(baseURL ? { baseURL } : {}),
       defaultHeaders: options?.defaultHeaders,
     });
+    // Use the same client for web search by default
+    this.webSearchClient = webSearchOptions
+      ? new OpenAI({
+          apiKey,
+          baseURL: webSearchOptions.baseURL ?? baseURL,
+          defaultHeaders: webSearchOptions.defaultHeaders ?? options?.defaultHeaders,
+        })
+      : this.defaultClient;
+  }
+
+  protected getClient(options: ModelOptions): OpenAI {
+    if (options.webSearch) {
+      return this.webSearchClient;
+    }
+    return this.defaultClient;
   }
 
   supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
@@ -365,16 +439,35 @@ abstract class OpenAIBase extends BaseProvider {
     const model = this.getModel(options);
     const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
+    const client = this.getClient(options);
+    const startTime = Date.now();
+
+    this.logRequestStart(
+      options,
+      model,
+      maxTokens,
+      systemPrompt,
+      `${client.baseURL ?? 'https://api.openai.com/v1'}/chat/completions`,
+      prompt
+    );
 
     try {
-      const response = await this.client.chat.completions.create({
+      const messages = [
+        ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+        { role: 'user' as const, content: prompt },
+      ];
+
+      this.debugLog(options, 'Request messages:', this.truncateForLogging(messages));
+
+      const response = await client.chat.completions.create({
         model,
-        messages: [
-          ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
-          { role: 'user' as const, content: prompt },
-        ],
+        messages,
         max_tokens: maxTokens,
       });
+
+      const endTime = Date.now();
+      this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+      this.debugLog(options, 'Response:', this.truncateForLogging(response));
 
       const content = response.choices[0].message.content;
       if (!content) {
@@ -414,7 +507,7 @@ export class OpenAIProvider extends OpenAIBase {
     const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
     const messageLimit = 1048576; // OpenAI's character limit
-
+    const client = this.getClient(options);
     const promptChunks = chunkMessage(prompt, messageLimit);
     let combinedResponseContent = '';
 
@@ -425,9 +518,9 @@ export class OpenAIProvider extends OpenAIBase {
           { role: 'user' as const, content: chunk },
         ];
 
-        this.debugLog(options, 'Request messages:', JSON.stringify(messages, null, 2));
+        this.debugLog(options, 'Request messages:', this.truncateForLogging(messages));
 
-        const response = await this.client.chat.completions.create({
+        const response = await client.chat.completions.create({
           model,
           messages,
           ...(model.startsWith('o')
@@ -467,32 +560,28 @@ export class OpenAIProvider extends OpenAIBase {
 
 // OpenRouter provider implementation
 export class OpenRouterProvider extends OpenAIBase {
+  private readonly headers: Record<string, string>;
+
   constructor() {
     const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
       throw new ApiKeyMissingError('OpenRouter');
     }
+    const headers = {
+      'HTTP-Referer': 'http://cursor-tools.com',
+      'X-Title': 'cursor-tools',
+    };
     super(apiKey, 'https://openrouter.ai/api/v1', {
-      defaultHeaders: {
-        'HTTP-Referer': 'http://cursor-tools.com',
-        'X-Title': 'cursor-tools',
-      },
+      defaultHeaders: headers,
     });
+    this.headers = headers;
   }
 
   async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
     const model = this.getModel(options);
     const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
-
-    this.debugLog(options, `Executing prompt with model: ${model}, maxTokens: ${maxTokens}`);
-    if (options?.debug) {
-      this.debugLog(
-        options,
-        'Prompt being sent to OpenRouter:',
-        prompt.slice(0, 500) + (prompt.length > 500 ? '... (truncated)' : '')
-      );
-    }
+    const client = this.getClient(options);
 
     try {
       const messages = [
@@ -500,9 +589,17 @@ export class OpenRouterProvider extends OpenAIBase {
         { role: 'user' as const, content: prompt },
       ];
 
-      this.debugLog(options, 'Request messages:', JSON.stringify(messages, null, 2));
+      this.logRequestStart(
+        options,
+        model,
+        maxTokens,
+        systemPrompt,
+        `${client.baseURL ?? 'https://openrouter.ai/api/v1'}/chat/completions`,
+        prompt,
+        this.headers
+      );
 
-      const response = await this.client.chat.completions.create(
+      const response = await client.chat.completions.create(
         {
           model,
           messages,
@@ -562,6 +659,16 @@ export class PerplexityProvider extends BaseProvider {
         const model = this.getModel(options);
         const maxTokens = options.maxTokens;
         const systemPrompt = this.getSystemPrompt(options);
+        const startTime = Date.now();
+
+        this.logRequestStart(
+          options,
+          model,
+          maxTokens,
+          systemPrompt,
+          'https://api.perplexity.ai/chat/completions',
+          prompt
+        );
 
         try {
           const requestBody = {
@@ -573,7 +680,7 @@ export class PerplexityProvider extends BaseProvider {
             max_tokens: maxTokens,
           };
 
-          this.debugLog(options, 'Request body:', JSON.stringify(requestBody, null, 2));
+          this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
 
           const response = await fetch('https://api.perplexity.ai/chat/completions', {
             method: 'POST',
@@ -585,13 +692,16 @@ export class PerplexityProvider extends BaseProvider {
             body: JSON.stringify(requestBody),
           });
 
+          const endTime = Date.now();
+          this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+
           if (!response.ok) {
             const errorText = await response.text();
             throw new NetworkError(`Perplexity API error: ${errorText}`);
           }
 
           const data = await response.json();
-          this.debugLog(options, 'Response:', JSON.stringify(data, null, 2));
+          this.debugLog(options, 'Response:', this.truncateForLogging(data));
 
           const content = data.choices[0]?.message?.content;
 
@@ -622,24 +732,211 @@ export class PerplexityProvider extends BaseProvider {
 
 // ModelBox provider implementation
 export class ModelBoxProvider extends OpenAIBase {
+  private static readonly defaultHeaders: Record<string, string> = {};
+  private static readonly webSearchHeaders: Record<string, string> = {
+    'x-feature-search-internet': 'true',
+  };
+  private availableModels: Set<string> | null = null;
+
   constructor() {
     const apiKey = process.env.MODELBOX_API_KEY;
     if (!apiKey) {
       throw new ApiKeyMissingError('ModelBox');
     }
-    super(apiKey, 'https://api.model.box/v1');
+    super(
+      apiKey,
+      'https://api.model.box/v1',
+      {
+        defaultHeaders: ModelBoxProvider.defaultHeaders,
+      },
+      {
+        defaultHeaders: ModelBoxProvider.webSearchHeaders,
+      }
+    );
+  }
+
+  public async fetchAvailableModels(): Promise<Set<string>> {
+    if (this.availableModels) {
+      return this.availableModels;
+    }
+
+    try {
+      const response = await fetch('https://api.model.box/v1/models', {
+        headers: {
+          Authorization: `Bearer ${process.env.MODELBOX_API_KEY}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new NetworkError(`Failed to fetch ModelBox models: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      this.availableModels = new Set(data.data.map((model: any) => model.id));
+      return this.availableModels;
+    } catch (error) {
+      console.error('Error fetching ModelBox models:', error);
+      throw new NetworkError('Failed to fetch available ModelBox models', error);
+    }
   }
 
   supportsWebSearch(model: string): { supported: boolean; model?: string; error?: string } {
-    if (model.startsWith('perplexity/') && (model.includes('sonar') || model.includes('online'))) {
-      return { supported: true };
+    try {
+      const availableModels = this.availableModels;
+      
+      if (availableModels) {
+        // First check if the model exists
+        if (!availableModels.has(model)) {
+          const similarModels = getProviderSimilarModels(model, availableModels);
+          const webSearchModels = similarModels.filter(m => 
+            m.includes('sonar') || 
+            m.includes('online') || 
+            m.includes('gemini')
+          );
+          
+          if (webSearchModels.length > 0) {
+            return {
+              supported: false,
+              model: webSearchModels[0],
+              error: `Model '${model}' not found. Consider using ${webSearchModels[0]} for web search instead.`,
+            };
+          }
+          
+          return {
+            supported: false,
+            error: `Model '${model}' not found.\n\nAvailable web search models:\n${Array.from(availableModels)
+              .filter(m => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
+              .slice(0, 5)
+              .map(m => `- ${m}`)
+              .join('\n')}`,
+          };
+        }
+
+        // Check if the model supports web search
+        if (isWebSearchSupportedModelOnModelBox(model)) {
+          return { supported: true };
+        }
+
+        // Suggest a web search capable model
+        const webSearchModels = Array.from(availableModels)
+          .filter((m) => m.includes('sonar') || m.includes('online') || m.includes('gemini'))
+          .slice(0, 5);
+
+        return {
+          supported: false,
+          model: webSearchModels[0],
+          error: `Model ${model} does not support web search. Try one of these models:\n${webSearchModels.map((m) => `- ${m}`).join('\n')}`,
+        };
+      }
+
+      // If we don't have the model list yet, just check if it's a web search model by name
+      return {
+        supported: isWebSearchSupportedModelOnModelBox(model),
+        error: 'Failed to check web search support. Please try again.',
+      };
+    } catch (error) {
+      console.error('Error checking web search support:', error);
+      return {
+        supported: false,
+        error: 'Failed to check web search support. Please try again.',
+      };
     }
-    return {
-      supported: false,
-      model: 'perplexity/sonar',
-      error: `Model ${model} does not support web search. Use a Perplexity model instead.`,
-    };
   }
+
+  async executePrompt(prompt: string, options: ModelOptions): Promise<string> {
+    const model = this.getModel(options);
+    const maxTokens = options.maxTokens;
+    const systemPrompt = this.getSystemPrompt(options);
+    const client = this.getClient(options);
+
+    try {
+      // Check if model exists
+      const availableModels = await this.fetchAvailableModels();
+      if (!availableModels.has(model)) {
+        const similarModels = getProviderSimilarModels(model, availableModels);
+        throw new ModelNotFoundError(
+          `Model '${model}' not found in ModelBox.\n\n` +
+          `You requested: ${model}\n` +
+          `Similar available models:\n${similarModels.map(m => `- ${m}`).join('\n')}\n\n` +
+          `Use --model with one of the above models.`
+        );
+      }
+
+      const messages = [
+        ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+        { role: 'user' as const, content: prompt },
+      ];
+
+      this.logRequestStart(
+        options,
+        model,
+        maxTokens,
+        systemPrompt,
+        `${client.baseURL ?? 'https://api.model.box/v1'}/chat/completions`,
+        prompt,
+        options.webSearch ? ModelBoxProvider.webSearchHeaders : ModelBoxProvider.defaultHeaders
+      );
+
+      const response = await client.chat.completions.create(
+        {
+          model,
+          messages,
+          max_tokens: maxTokens,
+        },
+        {
+          timeout: Math.floor(options?.timeout ?? TEN_MINUTES),
+          maxRetries: 3,
+        }
+      );
+
+      this.debugLog(options, 'Response:', JSON.stringify(response, null, 2));
+
+      const content = response.choices[0].message.content;
+      if (!content) {
+        throw new ProviderError(`${this.constructor.name} returned an empty response`);
+      }
+      return content;
+    } catch (error) {
+      console.error('ModelBox Provider: Error during API call:', error);
+      if (error instanceof ProviderError || error instanceof NetworkError) {
+        throw error;
+      }
+      throw new NetworkError(`Failed to communicate with ${this.constructor.name} API`, error);
+    }
+  }
+}
+
+function isWebSearchSupportedModelOnModelBox(model: string): boolean {
+  return model.includes('sonar') || model.includes('online') || model.includes('gemini');
+}
+
+/**
+ * Find similar models from a list of available models within the same provider namespace
+ * 1. Filters models to only those from the same provider (e.g., 'openai/', 'anthropic/')
+ * 2. Uses string similarity to find similar model names within that provider
+ * 
+ * @deprecated Consider using the generic implementation in src/utils/stringSimilarity.ts
+ * This version is kept for backward compatibility and its provider-specific filtering
+ */
+function getProviderSimilarModels(model: string, availableModels: Set<string>): string[] {
+  const modelParts = model.split('/');
+  const [provider, modelName] = modelParts.length > 1 ? modelParts : [null, modelParts[0]];
+
+  // Find models from the same provider or all models if no provider specified
+  const similarModels = Array.from(availableModels).filter(m => {
+    if (!provider) return true;
+    const [mProvider] = m.split('/');
+    return mProvider === provider;
+  });
+
+  // Sort by similarity to the requested model name
+  return similarModels.sort((a, b) => {
+    const [, aName = a] = a.split('/'); // Use full string if no provider prefix
+    const [, bName = b] = b.split('/');
+    const aSimilarity = stringSimilarity(modelName, aName);
+    const bSimilarity = stringSimilarity(modelName, bName);
+    return bSimilarity - aSimilarity;
+  }).slice(0, 5); // Return top 5 most similar models
 }
 
 // Anthropic provider implementation
@@ -668,14 +965,32 @@ export class AnthropicProvider extends BaseProvider {
     const model = this.getModel(options);
     const maxTokens = options.maxTokens;
     const systemPrompt = this.getSystemPrompt(options);
+    const startTime = Date.now();
+
+    this.logRequestStart(
+      options,
+      model,
+      maxTokens,
+      systemPrompt,
+      'https://api.anthropic.com/v1/messages',
+      prompt
+    );
 
     try {
-      const response = await this.client.messages.create({
+      const requestBody = {
         model,
         max_tokens: maxTokens,
         system: systemPrompt,
-        messages: [{ role: 'user', content: prompt }],
-      });
+        messages: [{ role: 'user' as const, content: prompt }],
+      };
+
+      this.debugLog(options, 'Request body:', this.truncateForLogging(requestBody));
+
+      const response = await this.client.messages.create(requestBody);
+
+      const endTime = Date.now();
+      this.debugLog(options, `API call completed in ${endTime - startTime}ms`);
+      this.debugLog(options, 'Response:', this.truncateForLogging(response));
 
       const content = response.content[0];
       if (!content || content.type !== 'text') {
@@ -706,8 +1021,14 @@ export function createProvider(
       return new OpenRouterProvider();
     case 'perplexity':
       return new PerplexityProvider();
-    case 'modelbox':
-      return new ModelBoxProvider();
+    case 'modelbox': {
+      const provider = new ModelBoxProvider();
+      // background init task
+      provider.fetchAvailableModels().catch((error) => {
+        console.error('Error fetching ModelBox models:', error);
+      });
+      return provider;
+    }
     case 'anthropic':
       return new AnthropicProvider();
     default:

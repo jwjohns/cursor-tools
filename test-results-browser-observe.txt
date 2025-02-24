@@ -1,1 +1,0 @@
-ObservationError: No interactive elements found on the page

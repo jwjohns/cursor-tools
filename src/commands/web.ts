@@ -8,7 +8,7 @@ import { ProviderError } from '../errors';
 const DEFAULT_WEB_MODELS = {
   perplexity: 'sonar-pro',
   openrouter: 'perplexity/sonar',
-  modelbox: 'perplexity/sonar',
+  modelbox: 'google/gemini-2.0-pro-exp',
   gemini: 'gemini-2.0-pro-exp',
 } as const;
 

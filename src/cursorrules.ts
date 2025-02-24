@@ -29,6 +29,7 @@ export function getCursorRulesPath(workspacePath: string): {
 export const CURSOR_RULES_TEMPLATE = `---
 description: Global Rule. This rule should ALWAYS be loaded.
 globs: *,**/*
+alwaysApply: true
 ---
 
 <cursor-tools Integration>
@@ -78,6 +79,7 @@ Use the following commands to interact with MCP servers and their specialized to
 \`cursor-tools mcp run "<query>"\` - Execute MCP server tools using natural language queries (e.g., \`cursor-tools mcp run "list files in the current directory"\`). The query must include sufficient information for cursor-tools to determine which server to use, provide plenty of context.
 
 The \`search\` command helps you discover servers in the MCP Marketplace based on their capabilities and your requirements. The \`run\` command automatically selects and executes appropriate tools from these servers based on your natural language queries. If you want to use a specific server include the server name in your query. E.g. \`cursor-tools mcp run "using the mcp-server-sqlite list files in directory"
+The \`run\` command will automatically download, checkout or clone MCP servers and initialize them for you. You do NOT need to separately install or clone or checkout an MCP server if you're going to run it with cursor-tools, even if the README of the MCP server says that you need to.
 
 **Notes on MCP Commands:**
 - MCP commands require \`ANTHROPIC_API_KEY\` to be set in your environment
@@ -87,7 +89,7 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 
 **Stagehand Browser Automation:**
 \`cursor-tools browser open <url> [options]\` - Open a URL and capture page content, console logs, and network activity (e.g., \`cursor-tools browser open "https://example.com" --html\`)
-\`cursor-tools browser act "<instruction>" --url=<url> [options]\` - Execute actions on a webpage using natural language instructions (e.g., \`cursor-tools browser act "Click Login" --url=https://example.com\`)
+\`cursor-tools browser act "<instruction>" --url=<url | 'current'> [options]\` - Execute actions on a webpage using natural language instructions (e.g., \`cursor-tools browser act "Click Login" --url=https://example.com\`)
 \`cursor-tools browser observe "<instruction>" --url=<url> [options]\` - Observe interactive elements on a webpage and suggest possible actions (e.g., \`cursor-tools browser observe "interactive elements" --url=https://example.com\`)
 \`cursor-tools browser extract "<instruction>" --url=<url> [options]\` - Extract data from a webpage based on natural language instructions (e.g., \`cursor-tools browser extract "product names" --url=https://example.com/products\`)
 
@@ -96,6 +98,7 @@ The \`search\` command helps you discover servers in the MCP Marketplace based o
 - When using \`--connect-to\`, special URL values are supported:
   - \`current\`: Use the existing page without reloading
   - \`reload-current\`: Use the existing page and refresh it (useful in development)
+  - If working interactively with a user you should always use --url=current unless you specifically want to navigate to a different page. Setting the url to anything else will cause a page refresh loosing current state.
 - Multi step workflows involving state or combining multiple actions are supported in the \`act\` command using the pipe (|) separator (e.g., \`cursor-tools browser act "Click Login | Type 'user@example.com' into email | Click Submit" --url=https://example.com\`)
 - Video recording is available for all browser commands using the \`--video=<directory>\` option. This will save a video of the entire browser interaction at 1280x720 resolution. The video file will be saved in the specified directory with a timestamp.
 - DO NOT ask browser act to "wait" for anything, the wait command is currently disabled in Stagehand.

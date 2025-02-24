@@ -23,7 +23,7 @@ export interface MCPServer {
   readme?: string; // Optional README content
 
   // Server execution details
-  command: string;
+  command: 'uvx' | 'npx';
   args: string[];
 }
 
@@ -48,11 +48,35 @@ const fetchFromMCPDirectory = once(async (): Promise<MarketplaceData> => {
   }
 });
 
+// Hardcoded overrides for specific MCP servers
+const MCP_OVERRIDES: Record<string, Partial<MCPServer>> = {
+  'google-calendar-mcp': {
+    githubUrl: 'https://github.com/eastlondoner/google-calendar-mcp',
+    command: 'npx',
+    args: ['-y', 'github:eastlondoner/google-calendar-mcp@main']
+  }
+};
+
 export class MarketplaceManager {
   constructor(private config: Config) {}
 
   async getMarketplaceData(): Promise<MarketplaceData> {
-    return fetchFromMCPDirectory();
+    const data = await fetchFromMCPDirectory();
+    
+    // Apply overrides
+    const servers = data.servers.map(server => {
+      const override = MCP_OVERRIDES[server.mcpId];
+      if (override) {
+        return {
+          ...server,
+          ...override
+        };
+      }
+      
+      return server;
+    });
+
+    return { servers: await Promise.all(servers) };
   }
 
   async findServersForIntent(query: string, options: { debug: boolean }): Promise<MCPServer[]> {

@@ -244,9 +244,11 @@ export class MCPClient {
                     },
                     CallToolResultSchema
                   );
-                  console.log(
-                    `MCP request finished for: ${currentToolName}${this.formatToolCallArgs(toolArgs)}`
-                  );
+                  if (this.debug) {
+                    console.log(
+                      `MCP request finished for: ${currentToolName}${this.formatToolCallArgs(toolArgs)}`
+                    );
+                  }
                   const formattedResult = JSON.stringify(toolResult.content.flatMap((c) => c.text));
 
                   // Cache the tool call and result with tool_use_id
@@ -334,7 +336,7 @@ export class MCPClient {
         continueConversation = stopReason === 'tool_use';
       }
 
-      return this.messages;
+      return this.messages.slice(1); // don't include the available variables in the response
     } catch (error) {
       const mcpError = handleMCPError(error);
       console.error('\nError during query processing:', mcpError.message);

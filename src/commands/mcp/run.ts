@@ -81,6 +81,7 @@ export class RunCommand implements Command {
     args: string[];
     env: Record<string, string>;
   }> {
+
     // Use Gemini to generate appropriate arguments
     const provider = createProvider('gemini');
 
@@ -177,6 +178,16 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
       const keys = Object.keys(args.mcpServers);
       if (!keys || keys.length !== 1) {
         throw new Error('Invalid argument format returned by AI, unexpected number of keys');
+      }
+
+            // If server has hardcoded args from an override, use those directly
+      if (server.command && server.args) {
+        console.log('Using hardcoded configuration from override for server', server.name);
+        return {
+          command: server.command === 'uvx' ? 'uvx' : 'npx',
+          args: server.args,
+          env: populateEnv(args.env ?? {}), // Preserve environment variables
+        };
       }
 
       const serverName = keys[0];
@@ -377,11 +388,21 @@ HOWEVER if the server details show that you cannot run with uvx or npx, or if yo
         }
       }
 
-      throw new Error(
-        `Failed to initialize any MCP servers after ${maxAttempts} attempts each. Failed servers:\n${failedServers
-          .map((f) => `- ${f.server.name}: ${f.error}`)
-          .join('\n')}`
-      );
+      // Build detailed error message with READMEs
+      const errorMessage = [
+        `Failed to initialize any MCP servers after ${maxAttempts} attempts each.`,
+        '\nServer READMEs:',
+        ...failedServers.map((f) => [
+          `\n=== ${f.server.name} README ===`,
+          f.server.readme?.trim() || '(No README available)',
+          `=== End of ${f.server.name} README ===\n`
+        ].join('\n')),
+        '\nFailed servers and their errors:',
+        ...failedServers.map((f) => `- ${f.server.name}: ${f.error}`),
+       
+      ].join('\n');
+
+      throw new Error(errorMessage);
     }
 
     // If some servers failed but others succeeded, log warning

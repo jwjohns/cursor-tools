@@ -1,6 +1,7 @@
 ---
 description: Global Rule. This rule should ALWAYS be loaded.
 globs: *,**/*
+alwaysApply: true
 ---
 <cursor-tools Integration>
 # Instructions
