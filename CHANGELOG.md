@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 
-## [Unreleased]
+## [0.6.0-alpha.7] - 2025-02-25
 
 ### Added
 - Added support for MCP server overrides in the marketplace
