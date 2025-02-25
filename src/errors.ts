@@ -54,7 +54,7 @@ export class ModelNotFoundError extends ProviderError {
         message += '\nSuggested models:\n- gpt-4o\n- o3-mini';
         break;
       case 'anthropic':
-        message += '\nSuggested models:\n- claude-3-5-opus-latest\n- claude-3-5-sonnet-latest';
+        message += '\nSuggested models:\n- claude-3-5-opus-latest\n- claude-3-7-sonnet-latest\n- claude-3-7-sonnet-thinking-latest';
         break;
       case 'gemini':
         message +=
@@ -65,10 +65,10 @@ export class ModelNotFoundError extends ProviderError {
         break;
       case 'openrouter':
         message +=
-          '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3.5-sonnet\n- deepseek/deepseek-chat\n- deepseek/deepseek-r1:free\n- google/gemini-2.0-pro-exp-02-05:free\n- mistral/mistral-large\n- groq/llama2-70b';
+          '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3.7-sonnet\n- deepseek/deepseek-chat\n- deepseek/deepseek-r1:free\n- google/gemini-2.0-pro-exp-02-05:free\n- mistral/mistral-large\n- groq/llama2-70b';
         break;
       case 'modelbox':
-        message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3-5-sonnet';
+        message += '\nSuggested models:\n- openai/gpt-4o\n- anthropic/claude-3-7-sonnet'; // it's 3-7 on modelbox
         break;
     }
 

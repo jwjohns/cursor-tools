@@ -76,10 +76,20 @@ export const defaultConfig: Config = {
   //     "provider": "openai",
   //   }
   //
-  // or
-  //
   //   "docs": {
   //     "provider": "gemini",
+  //   }
+  //
+  // You can also configure MCP server overrides:
+  //
+  //   "mcp": {
+  //     "overrides": {
+  //       "my-server": {
+  //         "githubUrl": "https://github.com/myuser/my-server",
+  //         "command": "npx",
+  //         "args": ["-y", "github:myuser/my-server@main"]
+  //       }
+  //     }
   //   }
 };
 

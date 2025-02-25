@@ -14,6 +14,10 @@ All notable changes to this project will be documented in this file.
   - Type-safe implementation ensures overrides match the MCPServer interface
   - Overrides take precedence over marketplace data and automatic GitHub repository checks
   - Logs when an override is applied using console.log for transparency
+  - Added support for user-configurable overrides in `cursor-tools.config.json`
+    - Users can define custom overrides in the `mcp.overrides` section
+    - Config overrides take precedence over hardcoded overrides
+    - Warns when a config override replaces a hardcoded override
 
 ## [0.6.0-alpha.5] - 2024-03-22
 

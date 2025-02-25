@@ -323,7 +323,7 @@ export class MCPClient {
       while (continueConversation) {
         const stream = await this.anthropicClient.messages.create({
           messages: this.messages,
-          model: 'claude-3-5-sonnet-latest',
+          model: 'claude-3-7-sonnet-thinking-latest',
           max_tokens: 8192,
           tools: this.tools,
           stream: true,

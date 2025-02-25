@@ -270,7 +270,7 @@ Please:
           case 'openrouter':
             if (tokenCount < 150_000) {
               // 200k is the limit but token counts are very approximate so play it safe
-              return 'anthropic/claude-3.5-sonnet'; // its 3.5 on openrouter
+              return 'anthropic/claude-3.7-sonnet-thinking'; // its 3.7 rather than 3-7 on openrouter
             }
             if (tokenCount < 800_000) {
               return 'google/gemini-2.0-flash-thinking-exp:free';
@@ -281,11 +281,11 @@ Please:
           case 'modelbox':
             if (tokenCount < 150_000) {
               // 200k is the limit but token counts are very approximate so play it safe
-              return 'anthropic/claude-3-5-sonnet'; // its 3.5 on modelbox
+              return 'anthropic/claude-3-7-sonnet-thinking'; // updated to 3.7 on modelbox without -latest
             }
             return 'google/gemini-2.0-flash-thinking';
           case 'anthropic':
-            return 'claude-3-5-sonnet-latest';
+            return 'claude-3-7-sonnet-thinking-latest';
           default:
             throw exhaustiveMatchGuard(provider);
         }

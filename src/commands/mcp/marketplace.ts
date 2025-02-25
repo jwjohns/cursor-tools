@@ -60,19 +60,38 @@ const MCP_OVERRIDES: Record<string, Partial<MCPServer>> = {
 export class MarketplaceManager {
   constructor(private config: Config) {}
 
+  private getOverrides(): Record<string, Partial<MCPServer>> {
+    // Start with hardcoded overrides
+    const overrides = { ...MCP_OVERRIDES };
+
+    // Merge with config overrides if they exist
+    if (this.config.mcp?.overrides) {
+      for (const [mcpId, override] of Object.entries(this.config.mcp.overrides)) {
+        if (mcpId in overrides) {
+          console.log(`Warning: Config override for ${mcpId} is overriding a hardcoded override`);
+        }
+        overrides[mcpId] = override;
+      }
+    }
+
+    return overrides;
+  }
+
   async getMarketplaceData(): Promise<MarketplaceData> {
     const data = await fetchFromMCPDirectory();
-
+    
     // Apply overrides
-    const servers = data.servers.map((server) => {
-      const override = MCP_OVERRIDES[server.mcpId];
+    const overrides = this.getOverrides();
+    const servers = data.servers.map(server => {
+      const override = overrides[server.mcpId];
       if (override) {
+        console.log(`Applying override for MCP server: ${server.mcpId}`);
         return {
           ...server,
-          ...override,
+          ...override
         };
       }
-
+      
       return server;
     });
 

@@ -31,6 +31,8 @@ description: Global Rule. This rule should ALWAYS be loaded.
 globs: *,**/*
 alwaysApply: true
 ---
+cursor-tools is a CLI tool that allows you to interact with AI models and other tools.
+cursor-tools is installed on this machine and it is available to you to execute. You're encouraged to use it.
 
 <cursor-tools Integration>
 # Instructions

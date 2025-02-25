@@ -23,7 +23,7 @@ const DEFAULT_FILE_MODELS: Record<FileProvider, string> = {
   openai: 'o3-mini', // largest context window (200k)
   perplexity: 'sonar-pro', // largest context window (200k tokens)
   openrouter: 'google/gemini-2.0-pro-exp-02-05:free', // largest context window (2M tokens)
-  modelbox: 'anthropic/claude-3-5-sonnet', // just for variety
+  modelbox: 'anthropic/claude-3-7-sonnet', // just for variety
 };
 
 const DEFAULT_THINKING_MODELS: Record<ThinkingProvider, string> = {
@@ -31,7 +31,7 @@ const DEFAULT_THINKING_MODELS: Record<ThinkingProvider, string> = {
   openai: 'o3-mini',
   perplexity: 'r1-1776',
   openrouter: 'openai/o3-mini',
-  modelbox: 'anthropic/claude-3-5-sonnet',
+  modelbox: 'anthropic/claude-3-7-sonnet-thinking',
 };
 
 export class PlanCommand implements Command {

@@ -11,7 +11,7 @@ import { ignorePatterns, includePatterns, outputOptions } from '../repomix/repom
 const DEFAULT_REPO_MODELS: Record<Provider, string> = {
   gemini: 'gemini-2.0-flash-thinking-exp',
   openai: 'o3-mini',
-  anthropic: 'claude-3-5-sonnet-latest',
+  anthropic: 'claude-3-7-sonnet-latest',
   modelbox: 'google/gemini-2.0-flash-thinking',
   openrouter: 'google/gemini-2.0-pro-exp-02-05:free',
   perplexity: 'sonar-reasoning-pro',
