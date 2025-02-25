@@ -108,6 +108,10 @@ export class RunCommand implements Command {
    */
   private async findAppBundle(projectDir: string): Promise<string> {
     try {
+      // Get the app name dynamically
+      const appName = await this.getAppName();
+      console.log(`Looking for app bundle with name: ${appName}`);
+      
       // First try to get the exact DerivedData path from build settings
       const { stdout: buildSettingsOutput } = await execAsync('xcodebuild -showBuildSettings');
       const lines = buildSettingsOutput.split('\n');
@@ -117,7 +121,7 @@ export class RunCommand implements Command {
       for (const line of lines) {
         if (line.includes('CONFIGURATION_BUILD_DIR =')) {
           const buildDir = line.split('=')[1].trim();
-          const possiblePath = join(buildDir, 'PapersApp.app');
+          const possiblePath = join(buildDir, appName);
           if (existsSync(possiblePath)) {
             console.log(`Found app bundle at ${possiblePath}`);
             return possiblePath;
@@ -129,7 +133,7 @@ export class RunCommand implements Command {
       for (const line of lines) {
         if (line.includes('TARGET_BUILD_DIR =')) {
           const buildDir = line.split('=')[1].trim();
-          const possiblePath = join(buildDir, 'PapersApp.app');
+          const possiblePath = join(buildDir, appName);
           if (existsSync(possiblePath)) {
             console.log(`Found app bundle at ${possiblePath}`);
             return possiblePath;
@@ -147,10 +151,20 @@ export class RunCommand implements Command {
       const searchPath = join(basePath, 'Build/Products/Debug-iphonesimulator');
       if (existsSync(searchPath)) {
         const files = readdirSync(searchPath);
-        const appBundle = files.find((f) => f.endsWith('.app'));
+        
+        // First try to find a specific app with our known app name
+        const appBundle = files.find((f) => f === appName);
         if (appBundle) {
           appPath = join(searchPath, appBundle);
           console.log(`Found app bundle at ${appPath}`);
+          return appPath;
+        }
+        
+        // If not found, take the first .app bundle we find
+        const anyAppBundle = files.find((f) => f.endsWith('.app'));
+        if (anyAppBundle) {
+          appPath = join(searchPath, anyAppBundle);
+          console.log(`Found app bundle at ${appPath} (fallback method)`);
           return appPath;
         }
       }
@@ -253,8 +267,8 @@ export class RunCommand implements Command {
       const appPath = await this.findAppBundle(process.cwd());
       console.log(`App path: ${appPath}`);
 
-      // Use the bundle identifier from your Xcode settings
-      const bundleId = 'com.papers.app';
+      // Extract bundle identifier dynamically from Info.plist
+      const bundleId = await this.getBundleIdentifier(appPath);
       console.log(`Using bundle identifier: ${bundleId}`);
 
       // Run on simulator
@@ -270,5 +284,69 @@ export class RunCommand implements Command {
   private async getDeviceList(): Promise<string> {
     const { stdout } = await execAsync('xcrun simctl list devices');
     return stdout;
+  }
+  
+  /**
+   * Extracts the bundle identifier from the app's Info.plist file
+   * 
+   * @param appPath - Path to the .app bundle
+   * @returns The bundle identifier string
+   */
+  private async getBundleIdentifier(appPath: string): Promise<string> {
+    try {
+      // Use plutil to extract the CFBundleIdentifier from Info.plist
+      const infoPlistPath = join(appPath, 'Info.plist');
+      const { stdout } = await execAsync(`plutil -p "${infoPlistPath}" | grep CFBundleIdentifier`);
+      
+      // Extract the value from the JSON-like output
+      const match = stdout.match(/"CFBundleIdentifier"\s*=>\s*"([^"]+)"/);
+      if (match && match[1]) {
+        return match[1];
+      }
+      
+      // Fallback: Try to get it from build settings
+      const { stdout: buildSettings } = await execAsync('xcodebuild -showBuildSettings | grep PRODUCT_BUNDLE_IDENTIFIER');
+      const settingsMatch = buildSettings.match(/PRODUCT_BUNDLE_IDENTIFIER\s*=\s*(.+)$/m);
+      if (settingsMatch && settingsMatch[1]) {
+        return settingsMatch[1].trim();
+      }
+      
+      throw new Error('Could not determine bundle identifier');
+    } catch (error: any) {
+      console.error(`Error getting bundle identifier: ${error.message}`);
+      throw new Error(`Failed to determine bundle identifier: ${error.message}`);
+    }
+  }
+  
+  /**
+   * Gets the app name from Xcode build settings
+   * 
+   * @returns The app name
+   */
+  private async getAppName(): Promise<string> {
+    try {
+      // Get app name from build settings
+      const { stdout } = await execAsync('xcodebuild -showBuildSettings | grep PRODUCT_NAME');
+      const match = stdout.match(/PRODUCT_NAME\s*=\s*(.+)$/m);
+      if (match && match[1]) {
+        const appName = match[1].trim();
+        console.log(`Found app name: ${appName}`);
+        return `${appName}.app`;
+      }
+      
+      // Fallback: try to find the target name
+      const { stdout: targetOutput } = await execAsync('xcodebuild -list | grep "Targets:" -A 10');
+      const targetMatch = targetOutput.match(/Targets:\s*\n\s*(.+)/);
+      if (targetMatch && targetMatch[1]) {
+        const appName = targetMatch[1].trim();
+        console.log(`Found target name: ${appName}`);
+        return `${appName}.app`;
+      }
+      
+      throw new Error('Could not determine app name');
+    } catch (error: any) {
+      console.error(`Error getting app name: ${error.message}`);
+      throw new Error(`Failed to determine app name: ${error.message}`);
+    }
   }
 }
