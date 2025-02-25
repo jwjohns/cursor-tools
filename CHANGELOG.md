@@ -19,6 +19,14 @@ All notable changes to this project will be documented in this file.
     - Config overrides take precedence over hardcoded overrides
     - Warns when a config override replaces a hardcoded override
 
+### Changed
+- Updated all references to Claude 3.5 Sonnet models to Claude 3.7 Sonnet models throughout the codebase
+  - Updated model references in configuration files, documentation, and source code
+  - Updated default model settings for Anthropic provider
+  - Updated error messages and model suggestions
+  - Used `claude-3-7-sonnet` for most use cases and `claude-3-7-sonnet-thinking` for MCP client
+- Updated @browserbasehq/stagehand dependency from 1.13.0 to 1.13.1
+
 ## [0.6.0-alpha.5] - 2024-03-22
 
 ### Changed

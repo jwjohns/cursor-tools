@@ -63,11 +63,16 @@ export class ActCommand implements Command {
         debugDom: options?.debug ?? stagehandConfig.debugDom,
         modelName: getStagehandModel(stagehandConfig, {
           model: options?.model,
-        }) as 'claude-3-7-sonnet-20250219',
+        }) as 'claude-3-7-sonnet-20250219', // This is needed temporarily because the types for stagehand haven't been updated to include the latest models
         apiKey: getStagehandApiKey(stagehandConfig),
         enableCaching: stagehandConfig.enableCaching,
         logger: stagehandLogger(options?.debug ?? stagehandConfig.verbose),
       } satisfies ConstructorParams;
+
+      if (config.modelName.startsWith('claude-3-7-sonnet')) {
+        console.log('using claude-3-7-sonnet-20250219 because this is what stagehand supports right now');
+        config.modelName = 'claude-3-7-sonnet-20250219';
+      }
 
       // Set default values for network and console options
       options = {
