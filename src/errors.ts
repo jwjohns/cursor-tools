@@ -54,7 +54,8 @@ export class ModelNotFoundError extends ProviderError {
         message += '\nSuggested models:\n- gpt-4o\n- o3-mini';
         break;
       case 'anthropic':
-        message += '\nSuggested models:\n- claude-3-5-opus-latest\n- claude-3-7-sonnet-latest\n- claude-3-7-sonnet-thinking-latest';
+        message +=
+          '\nSuggested models:\n- claude-3-5-opus-latest\n- claude-3-7-sonnet-latest\n- claude-3-7-sonnet-thinking-latest';
         break;
       case 'gemini':
         message +=

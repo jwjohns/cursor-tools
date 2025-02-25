@@ -2,7 +2,12 @@ import { z } from 'zod';
 import { exhaustiveMatchGuard } from '../../../utils/exhaustiveMatchGuard';
 
 // Define available models
-export const availableModels = z.enum(['claude-3-7-sonnet-thinking-latest', 'claude-3-7-sonnet-latest', 'o3-mini', 'gpt-4o']);
+export const availableModels = z.enum([
+  'claude-3-7-sonnet-thinking-latest',
+  'claude-3-7-sonnet-latest',
+  'o3-mini',
+  'gpt-4o',
+]);
 
 export type AvailableModel = z.infer<typeof availableModels>;
 

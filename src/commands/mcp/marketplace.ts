@@ -79,19 +79,19 @@ export class MarketplaceManager {
 
   async getMarketplaceData(): Promise<MarketplaceData> {
     const data = await fetchFromMCPDirectory();
-    
+
     // Apply overrides
     const overrides = this.getOverrides();
-    const servers = data.servers.map(server => {
+    const servers = data.servers.map((server) => {
       const override = overrides[server.mcpId];
       if (override) {
         console.log(`Applying override for MCP server: ${server.mcpId}`);
         return {
           ...server,
-          ...override
+          ...override,
         };
       }
-      
+
       return server;
     });
 
