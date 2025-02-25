@@ -70,7 +70,9 @@ export class ActCommand implements Command {
       } satisfies ConstructorParams;
 
       if (config.modelName.startsWith('claude-3-7-sonnet')) {
-        console.log('using claude-3-7-sonnet-20250219 because this is what stagehand supports right now');
+        console.log(
+          'using claude-3-7-sonnet-20250219 because this is what stagehand supports right now'
+        );
         config.modelName = 'claude-3-7-sonnet-20250219';
       }
 
