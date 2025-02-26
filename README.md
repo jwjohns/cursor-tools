@@ -38,6 +38,7 @@
     - [Troubleshooting Browser Commands](#troubleshooting-browser-commands)
 - [Skills](#skills)
   - [GitHub Integration](#github-integration)
+  - [Xcode Tools](#xcode-tools)
   - [Documentation Generation](#documentation-generation-uses-gemini-20)
 - [Configuration](#configuration)
   - [cursor-tools.config.json](#cursor-toolsconfigjson)
@@ -55,6 +56,7 @@
   - [Repository Context Examples](#repository-context-examples)
   - [Documentation Examples](#documentation-examples)
   - [GitHub Integration Examples](#github-integration-examples)
+  - [Xcode Command Examples](#xcode-command-examples)
   - [Browser Command Examples](#browser-command-examples)
     - [open subcommand examples](#open-subcommand-examples)
     - [act, extract, observe subcommands examples](#act-extract-observe-subcommands-examples)
@@ -489,6 +491,45 @@ With authentication:
 - Public repositories: 5,000 requests per hour
 - Private repositories: Full access (with appropriate token scopes)
 
+### Xcode Tools
+Automate iOS app building, testing, and running in the simulator:
+
+```bash
+# Available subcommands
+cursor-tools xcode build  # Build Xcode project and report errors
+cursor-tools xcode run    # Build and run app in simulator
+cursor-tools xcode lint   # Analyze code and offer to fix warnings
+```
+
+**Build Command Options:**
+```bash
+# Specify custom build path (derived data)
+cursor-tools xcode build buildPath=/custom/build/path
+
+# Specify target device
+cursor-tools xcode build destination="platform=iOS Simulator,name=iPhone 15"
+```
+
+**Run Command Options:**
+```bash
+# Run on iPhone simulator (default)
+cursor-tools xcode run iphone
+
+# Run on iPad simulator
+cursor-tools xcode run ipad
+
+# Run on specific device with custom build path
+cursor-tools xcode run device="iPhone 16 Pro" buildPath=/custom/build/path
+```
+
+The Xcode commands provide:
+- Automatic project/workspace detection
+- Dynamic app bundle identification
+- Build output streaming with error parsing
+- Simulator device management
+- Support for both iPhone and iPad simulators
+- Custom build path specification to control derived data location
+
 ### Documentation Generation (uses Gemini 2.0)
 Generate comprehensive documentation for your repository or any GitHub repository:
 ```bash
@@ -711,6 +752,15 @@ Plan command specific options:
 GitHub command specific options:
 - `--from-github=<GitHub username>/<repository name>[@<branch>]`: Access PRs/issues from a specific GitHub repository. `--repo` is an older, still supported synonym for this option.
 
+Xcode command specific options:
+- For the build subcommand:
+  - `buildPath=<path>`: Set a custom derived data path
+  - `destination=<destination string>`: Set a custom simulator destination
+- For the run subcommand:
+  - `iphone` or `ipad`: Select device type
+  - `device=<device name>`: Specify a custom device
+  - `buildPath=<path>`: Set a custom derived data path
+
 Browser command specific options:
 - `--console`: Capture browser console logs (enabled by default, use `--no-console` to disable)
 - `--html`: Capture page HTML content (disabled by default)
@@ -826,6 +876,24 @@ cursor-tools github pr 123 --from-github microsoft/typescript
 
 # Track issue discussions
 cursor-tools github issue 456 --from-github golang/go
+```
+
+#### Xcode Command Examples
+```bash
+# Build an iOS app with default settings
+cursor-tools xcode build
+
+# Build with custom derived data path
+cursor-tools xcode build buildPath=~/custom/derived/data
+
+# Run in iPhone simulator
+cursor-tools xcode run iphone
+
+# Run on specific iPad model
+cursor-tools xcode run device="iPad Pro (12.9-inch) (6th generation)"
+
+# Analyze code quality 
+cursor-tools xcode lint
 ```
 
 #### Browser Command Examples
