@@ -153,6 +153,18 @@ Gemini is a nickname for cursor-tools repo
 Perplexity is a nickname for cursor-tools web
 Stagehand is a nickname for cursor-tools browser
 
+**Xcode Commands:**
+\`cursor-tools xcode build [buildPath=<path>] [destination=<destination>]\` - Build Xcode project and report errors.
+**Build Command Options:**
+--buildPath=<path>: (Optional) Specifies a custom directory for derived build data. Defaults to ./.build/DerivedData.
+--destination=<destination>: (Optional) Specifies the destination for building the app (e.g., 'platform=iOS Simulator,name=iPhone 16 Pro'). Defaults to 'platform=iOS Simulator,name=iPhone 16 Pro'.
+
+\`cursor-tools xcode run [destination=<destination>]\` - Build and run the Xcode project on a simulator.
+**Run Command Options:**
+--destination=<destination>: (Optional) Specifies the destination simulator (e.g., 'platform=iOS Simulator,name=iPhone 16 Pro'). Defaults to 'platform=iOS Simulator,name=iPhone 16 Pro'.
+
+\`cursor-tools xcode lint\` - Run static analysis on the Xcode project to find and fix issues.
+
 **Additional Notes:**
 - For detailed information, see \`node_modules/cursor-tools/README.md\` (if installed locally).
 - Configuration is in \`cursor-tools.config.json\` (or \`~/.cursor-tools/config.json\`).
