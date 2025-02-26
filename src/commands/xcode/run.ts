@@ -13,7 +13,7 @@ import { readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { execAsync } from '../../utils/execAsync.js';
 import { BuildCommand } from './build.js';
-import { DEVICE_TYPES, DEFAULT_TIMEOUTS } from './utils.js';
+import { DEVICE_TYPES, DEFAULT_TIMEOUTS, findXcodeProject } from './utils.js';
 
 /**
  * Command-specific flags and options
@@ -108,16 +108,42 @@ export class RunCommand implements Command {
    */
   private async findAppBundle(projectDir: string): Promise<string> {
     try {
+      // Find the project info to get the app name
+      const project = findXcodeProject(projectDir);
+      if (!project) {
+        throw new Error('No Xcode project or workspace found in current directory');
+      }
+      
+      const projectName = project.name;
+      console.log(`Found project: ${projectName}`);
+      
       // First try to get the exact DerivedData path from build settings
       const { stdout: buildSettingsOutput } = await execAsync('xcodebuild -showBuildSettings');
       const lines = buildSettingsOutput.split('\n');
-
+      
+      // Look for product name in build settings
+      let productName = '';
+      for (const line of lines) {
+        if (line.includes('PRODUCT_NAME =')) {
+          productName = line.split('=')[1].trim();
+          break;
+        }
+      }
+      
+      // If product name not found, fallback to project name
+      if (!productName) {
+        productName = projectName;
+      }
+      
+      console.log(`Using product name: ${productName}`);
+      const appName = `${productName}.app`;
+      
       // Look for CONFIGURATION_BUILD_DIR first as it's most specific
       let appPath = '';
       for (const line of lines) {
         if (line.includes('CONFIGURATION_BUILD_DIR =')) {
           const buildDir = line.split('=')[1].trim();
-          const possiblePath = join(buildDir, 'PapersApp.app');
+          const possiblePath = join(buildDir, appName);
           if (existsSync(possiblePath)) {
             console.log(`Found app bundle at ${possiblePath}`);
             return possiblePath;
@@ -129,7 +155,7 @@ export class RunCommand implements Command {
       for (const line of lines) {
         if (line.includes('TARGET_BUILD_DIR =')) {
           const buildDir = line.split('=')[1].trim();
-          const possiblePath = join(buildDir, 'PapersApp.app');
+          const possiblePath = join(buildDir, appName);
           if (existsSync(possiblePath)) {
             console.log(`Found app bundle at ${possiblePath}`);
             return possiblePath;
@@ -147,15 +173,38 @@ export class RunCommand implements Command {
       const searchPath = join(basePath, 'Build/Products/Debug-iphonesimulator');
       if (existsSync(searchPath)) {
         const files = readdirSync(searchPath);
-        const appBundle = files.find((f) => f.endsWith('.app'));
+        // First try to find the specific app bundle
+        let appBundle = files.find((f) => f === appName);
+        
+        // If not found, try any .app bundle
+        if (!appBundle) {
+          appBundle = files.find((f) => f.endsWith('.app'));
+        }
+        
         if (appBundle) {
           appPath = join(searchPath, appBundle);
           console.log(`Found app bundle at ${appPath}`);
           return appPath;
         }
       }
+      
+      // Final fallback: try to find any .app bundle recursively in DerivedData
+      const findAppCommand = `find ${basePath} -name "*.app" -type d | grep -i simulator`;
+      try {
+        const { stdout: foundApps } = await execAsync(findAppCommand);
+        if (foundApps && foundApps.trim()) {
+          const appPaths = foundApps.trim().split('\n');
+          if (appPaths.length > 0) {
+            appPath = appPaths[0]; // Use the first found app
+            console.log(`Found app bundle at ${appPath}`);
+            return appPath;
+          }
+        }
+      } catch (findError) {
+        // Ignore find command errors, continue to the error below
+      }
 
-      throw new Error('Could not find built app bundle in DerivedData');
+      throw new Error('Could not find built app bundle in DerivedData. Try running build first.');
     } catch (error: any) {
       throw new Error(`Failed to find app bundle: ${error.message}`);
     }
@@ -247,15 +296,52 @@ export class RunCommand implements Command {
         ? DEVICE_TYPES.ipad 
         : DEVICE_TYPES.iphone;
 
-      console.log(`Using device: ${deviceName}`);
+      yield `Using device: ${deviceName}\n`;
 
       // Find the app bundle using our improved method
       const appPath = await this.findAppBundle(process.cwd());
-      console.log(`App path: ${appPath}`);
+      yield `App path: ${appPath}\n`;
 
-      // Use the bundle identifier from your Xcode settings
-      const bundleId = 'com.papers.app';
-      console.log(`Using bundle identifier: ${bundleId}`);
+      // Extract bundle ID from Info.plist or fallback to dynamic generation
+      let bundleId = '';
+      try {
+        // Try to extract from Info.plist in the app bundle
+        const infoPlistPath = join(appPath, 'Info.plist');
+        if (existsSync(infoPlistPath)) {
+          const { stdout: plistOutput } = await execAsync(`plutil -p "${infoPlistPath}"`);
+          const bundleIdMatch = plistOutput.match(/"CFBundleIdentifier"\s*=>\s*"([^"]+)"/);
+          if (bundleIdMatch && bundleIdMatch[1]) {
+            bundleId = bundleIdMatch[1];
+          }
+        }
+        
+        // If not found in Info.plist, try build settings
+        if (!bundleId) {
+          const { stdout: buildSettingsOutput } = await execAsync('xcodebuild -showBuildSettings');
+          const lines = buildSettingsOutput.split('\n');
+          for (const line of lines) {
+            if (line.includes('PRODUCT_BUNDLE_IDENTIFIER =')) {
+              bundleId = line.split('=')[1].trim();
+              break;
+            }
+          }
+        }
+        
+        // If still not found, generate a fallback bundle ID based on project name
+        if (!bundleId) {
+          const project = findXcodeProject(process.cwd());
+          if (project) {
+            bundleId = `com.example.${project.name.toLowerCase().replace(/\s+/g, '-')}`;
+          } else {
+            bundleId = 'com.example.app';
+          }
+        }
+      } catch (error) {
+        // Fallback to a generic bundle ID if everything else fails
+        bundleId = 'com.example.app';
+      }
+      
+      yield `Using bundle identifier: ${bundleId}\n`;
 
       // Run on simulator
       await this.runOnSimulator(deviceName, bundleId, appPath);
